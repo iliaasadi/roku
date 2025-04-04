@@ -623,8 +623,15 @@
         async function loadMenu() {
             try {
                 const response = await fetch('/api/items');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const items = await response.json();
                 
+                if (!Array.isArray(items)) {
+                    throw new Error('Invalid response format from API');
+                }
+
                 const itemsByCategory = items.reduce((acc, item) => {
                     if (!acc[item.category_name]) {
                         acc[item.category_name] = [];
@@ -660,36 +667,59 @@
                     });
                 } else {
                     // Show items for selected category
-                    const category = await fetch(`/api/categories/${currentCategory}`).then(res => res.json());
+                    const categoryResponse = await fetch(`/api/categories/${currentCategory}`);
+                    if (!categoryResponse.ok) {
+                        throw new Error(`Failed to fetch category: ${categoryResponse.status}`);
+                    }
+                    const category = await categoryResponse.json();
+                    
                     const filteredItems = items.filter(item => item.category_id === parseInt(currentCategory));
                     
-                    menuContainer.innerHTML = `
-                        <div class="col-span-full">
-                            <h3 class="text-3xl font-bold text-white mb-6">${category.name}</h3>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-                                ${filteredItems.map(item => `
-                                    <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                                        <img src="${item.image_url}" alt="${item.name}">
-                                        <div class="content">
-                                            <h4 class="text-xl font-semibold text-white">${item.name}</h4>
-                                            <p class="text-gray-300">${item.description.substring(0, 100)}...</p>
-                                            <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
+                    if (filteredItems.length > 0) {
+                        menuContainer.innerHTML = `
+                            <div class="col-span-full">
+                                <h3 class="text-3xl font-bold text-white mb-6">${category.name}</h3>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+                                    ${filteredItems.map(item => `
+                                        <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                                            <img src="${item.image_url}" alt="${item.name}">
+                                            <div class="content">
+                                                <h4 class="text-xl font-semibold text-white">${item.name}</h4>
+                                                <p class="text-gray-300">${item.description.substring(0, 100)}...</p>
+                                                <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                `).join('')}
+                                    `).join('')}
+                                </div>
                             </div>
-                        </div>
-                    `;
+                        `;
+                    } else {
+                        menuContainer.innerHTML = `
+                            <div class="col-span-full text-center py-12">
+                                <h3 class="text-3xl font-bold text-white mb-4">${category.name}</h3>
+                                <p class="text-gray-300 text-lg">No items found in this category.</p>
+                            </div>
+                        `;
+                    }
                 }
             } catch (error) {
                 console.error('Error loading menu:', error);
-                alert('Failed to load menu items. Please try again.');
+                const menuContainer = document.getElementById('menuContainer');
+                menuContainer.innerHTML = `
+                    <div class="col-span-full text-center py-12">
+                        <p class="text-gray-300 text-lg">Failed to load menu items. Please try again later.</p>
+                        <p class="text-gray-400 text-sm mt-2">Error: ${error.message}</p>
+                    </div>
+                `;
             }
         }
 
         // Modified showAdminPanel function
         function showAdminPanel() {
-            document.getElementById('adminPanel').classList.add('show');
+            const adminPanel = document.getElementById('adminPanel');
+            adminPanel.classList.add('show');
+            
+            // Load categories and menu items
             loadCategories();
             loadAdminMenuItems();
             
@@ -711,13 +741,18 @@
             const saveButton = document.createElement('button');
             saveButton.className = 'save-button';
             saveButton.textContent = 'Save Changes';
-            saveButton.onclick = saveMenu;
+            saveButton.onclick = () => {
+                loadMenu();
+                loadAdminMenuItems();
+                alert('Changes saved successfully!');
+            };
             document.body.appendChild(saveButton);
         }
 
         // Modified hideAdminPanel function
         function hideAdminPanel() {
-            document.getElementById('adminPanel').classList.remove('show');
+            const adminPanel = document.getElementById('adminPanel');
+            adminPanel.classList.remove('show');
             
             // Remove search input
             const searchInput = document.querySelector('.mb-4 input[type="text"]');
@@ -735,7 +770,12 @@
             const submitButton = document.querySelector('#addItemForm button[type="submit"]');
             if (submitButton) {
                 submitButton.textContent = 'Add Item';
+                delete submitButton.dataset.editId;
             }
+            
+            // Reset form
+            document.getElementById('addItemForm').reset();
+            document.getElementById('imageButtonText').textContent = 'Choose Image';
         }
 
         // Modified deleteCategory function
@@ -1020,19 +1060,23 @@
         // Filter menu items by category
         async function filterByCategory(categoryId) {
             try {
+                currentCategory = categoryId; // Update the current category
                 const response = await fetch('/api/items');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const items = await response.json();
                 
-                const filteredItems = categoryId === 'all' 
-                    ? items 
-                    : items.filter(item => item.category_id === parseInt(categoryId));
-                
+                if (!Array.isArray(items)) {
+                    throw new Error('Invalid response format from API');
+                }
+
                 const menuContainer = document.getElementById('menuContainer');
                 menuContainer.innerHTML = '';
                 
                 if (categoryId === 'all') {
                     // Group items by category
-                    const itemsByCategory = filteredItems.reduce((acc, item) => {
+                    const itemsByCategory = items.reduce((acc, item) => {
                         if (!acc[item.category_name]) {
                             acc[item.category_name] = [];
                         }
@@ -1063,34 +1107,77 @@
                     });
                 } else {
                     // Show items for selected category
-                    const category = await fetch(`/api/categories/${categoryId}`).then(res => res.json());
-                    menuContainer.innerHTML = `
-                        <div class="col-span-full">
-                            <h3 class="text-3xl font-bold text-white mb-6">${category.name}</h3>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-                                ${filteredItems.map(item => `
-                                    <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                                        <img src="${item.image_url}" alt="${item.name}">
-                                        <div class="content">
-                                            <h4 class="text-xl font-semibold text-white">${item.name}</h4>
-                                            <p class="text-gray-300">${item.description.substring(0, 100)}...</p>
-                                            <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
-                                        </div>
+                    try {
+                        const categoryResponse = await fetch(`/api/categories/${categoryId}`);
+                        if (!categoryResponse.ok) {
+                            if (categoryResponse.status === 404) {
+                                menuContainer.innerHTML = `
+                                    <div class="col-span-full text-center py-12">
+                                        <p class="text-gray-300 text-lg">Category not found. Please try again.</p>
                                     </div>
-                                `).join('')}
+                                `;
+                                return;
+                            }
+                            throw new Error(`Failed to fetch category: ${categoryResponse.status}`);
+                        }
+                        const category = await categoryResponse.json();
+                        
+                        const filteredItems = items.filter(item => item.category_id === parseInt(categoryId));
+                        
+                        if (filteredItems.length > 0) {
+                            menuContainer.innerHTML = `
+                                <div class="col-span-full">
+                                    <h3 class="text-3xl font-bold text-white mb-6">${category.name}</h3>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+                                        ${filteredItems.map(item => `
+                                            <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                                                <img src="${item.image_url}" alt="${item.name}">
+                                                <div class="content">
+                                                    <h4 class="text-xl font-semibold text-white">${item.name}</h4>
+                                                    <p class="text-gray-300">${item.description.substring(0, 100)}...</p>
+                                                    <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            menuContainer.innerHTML = `
+                                <div class="col-span-full text-center py-12">
+                                    <h3 class="text-3xl font-bold text-white mb-4">${category.name}</h3>
+                                    <p class="text-gray-300 text-lg">No items found in this category.</p>
+                                </div>
+                            `;
+                        }
+                    } catch (error) {
+                        console.error('Error fetching category:', error);
+                        menuContainer.innerHTML = `
+                            <div class="col-span-full text-center py-12">
+                                <p class="text-gray-300 text-lg">Failed to load category. Please try again later.</p>
+                                <p class="text-gray-400 text-sm mt-2">Error: ${error.message}</p>
                             </div>
-                        </div>
-                    `;
+                        `;
+                    }
                 }
                 
                 // Update active button
                 document.querySelectorAll('.category-button').forEach(button => {
                     button.classList.remove('active');
                 });
-                document.querySelector(`.category-button[onclick="filterByCategory('${categoryId}')"]`).classList.add('active');
+                const activeButton = document.querySelector(`.category-button[onclick="filterByCategory('${categoryId}')"]`);
+                if (activeButton) {
+                    activeButton.classList.add('active');
+                }
             } catch (error) {
                 console.error('Error filtering items:', error);
-                alert('Failed to load menu items. Please try again.');
+                const menuContainer = document.getElementById('menuContainer');
+                menuContainer.innerHTML = `
+                    <div class="col-span-full text-center py-12">
+                        <p class="text-gray-300 text-lg">Failed to load menu items. Please try again later.</p>
+                        <p class="text-gray-400 text-sm mt-2">Error: ${error.message}</p>
+                    </div>
+                `;
             }
         }
 
@@ -1098,15 +1185,23 @@
         async function loadAdminMenuItems() {
             try {
                 const response = await fetch('/api/items');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const items = await response.json();
                 
+                if (!Array.isArray(items)) {
+                    throw new Error('Invalid response format from API');
+                }
+
                 const adminMenuItems = document.getElementById('adminMenuItems');
                 adminMenuItems.innerHTML = items.map(item => `
                     <div class="border border-white/10 p-4 rounded flex justify-between items-center">
-                        <div>
+                        <div class="flex-1">
                             <h3 class="font-semibold text-white">${item.name}</h3>
                             <p class="text-gray-300">${item.category_name}</p>
                             <p class="text-gray-300">${item.price.toLocaleString()} تومان</p>
+                            ${item.description ? `<p class="text-gray-400 text-sm mt-1">${item.description}</p>` : ''}
                         </div>
                         <div class="flex gap-2">
                             <button onclick="editItem(${item.id})" class="text-blue-400 hover:text-blue-300" title="Edit">
@@ -1124,121 +1219,96 @@
                 `).join('');
             } catch (error) {
                 console.error('Error loading admin menu items:', error);
-                alert('Failed to load menu items. Please try again.');
+                const adminMenuItems = document.getElementById('adminMenuItems');
+                adminMenuItems.innerHTML = `
+                    <div class="col-span-full text-center py-12">
+                        <p class="text-gray-300 text-lg">Failed to load menu items. Please try again later.</p>
+                        <p class="text-gray-400 text-sm mt-2">Error: ${error.message}</p>
+                    </div>
+                `;
             }
         }
 
         // Modified editItem function
-        async function editItem(id) {
+        async function editItem(itemId) {
             try {
-                const response = await fetch(`/api/items/${id}`);
+                // First, fetch the item details
+                const response = await fetch(`/api/items/${itemId}`);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch item: ${response.status}`);
+                }
                 const item = await response.json();
-                
-                if (!item) return;
 
-                // Fill the form with item data
-                document.getElementById('category').value = item.category_id;
-                document.getElementById('name').value = item.name;
-                document.getElementById('price').value = item.price;
-                document.getElementById('description').value = item.description;
-                document.getElementById('imageUrl').value = item.image_url;
-                document.getElementById('imageButtonText').textContent = 'Current Image';
+                // Get form elements
+                const form = document.getElementById('addItemForm');
+                const categorySelect = document.getElementById('category');
+                const nameInput = document.getElementById('name');
+                const priceInput = document.getElementById('price');
+                const descriptionInput = document.getElementById('description');
+                const imageUrlInput = document.getElementById('imageUrl');
+                const imageButtonText = document.getElementById('imageButtonText');
+                const submitButton = form.querySelector('button[type="submit"]');
 
-                // Change form button text and add data-id
-                const submitButton = document.querySelector('#addItemForm button[type="submit"]');
+                // Set form values with the item's details
+                categorySelect.value = item.category_id;
+                nameInput.value = item.name;
+                priceInput.value = item.price;
+                descriptionInput.value = item.description || '';
+                imageUrlInput.value = item.image_url;
+                imageButtonText.textContent = item.image_url ? 'Current Image' : 'Choose Image';
+
+                // Update submit button text and add data attribute
                 submitButton.textContent = 'Update Item';
-                submitButton.dataset.editId = id;
+                submitButton.dataset.editId = itemId;
 
-                // Scroll to the form
-                document.getElementById('addItemForm').scrollIntoView({ behavior: 'smooth' });
+                // Scroll to form
+                form.scrollIntoView({ behavior: 'smooth' });
+
+                // Update form submit handler
+                form.onsubmit = async (e) => {
+                    e.preventDefault();
+                    
+                    const formData = {
+                        category_id: parseInt(categorySelect.value),
+                        name: nameInput.value,
+                        price: parseFloat(priceInput.value),
+                        description: descriptionInput.value,
+                        image_url: imageUrlInput.value
+                    };
+
+                    try {
+                        const updateResponse = await fetch(`/api/items/${itemId}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(formData)
+                        });
+
+                        if (!updateResponse.ok) {
+                            throw new Error('Failed to update item');
+                        }
+
+                        // Reset form
+                        form.reset();
+                        imageButtonText.textContent = 'Choose Image';
+                        submitButton.textContent = 'Add Item';
+                        delete submitButton.dataset.editId;
+
+                        // Reload items
+                        await loadMenu();
+                        await loadAdminMenuItems();
+                        alert('Item updated successfully!');
+                    } catch (error) {
+                        console.error('Error updating item:', error);
+                        alert('Failed to update item. Please try again.');
+                    }
+                };
             } catch (error) {
-                console.error('Error loading item for editing:', error);
+                console.error('Error in editItem:', error);
                 alert('Failed to load item details. Please try again.');
             }
         }
-
-        // Image upload handler
-        function handleImageUpload(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('imageUrl').value = e.target.result;
-                    document.getElementById('imageButtonText').textContent = file.name;
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        // Modified addItemForm handler
-        document.getElementById('addItemForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const category = document.getElementById('category').value;
-            if (!category) {
-                alert('لطفا یک دسته‌بندی انتخاب کنید');
-                return;
-            }
-
-            const submitButton = e.target.querySelector('button[type="submit"]');
-            const editId = submitButton.dataset.editId;
-            const imageUrl = document.getElementById('imageUrl').value;
-            const description = document.getElementById('description').value;
-
-            if (!imageUrl) {
-                alert('لطفا یک تصویر انتخاب کنید');
-                return;
-            }
-
-            try {
-                const itemData = {
-                    category_id: parseInt(category),
-                    name: document.getElementById('name').value,
-                    price: parseFloat(document.getElementById('price').value),
-                    description: description || '',
-                    image_url: imageUrl
-                };
-
-                let response;
-                if (editId) {
-                    // Update existing item
-                    response = await fetch(`/api/items/${editId}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(itemData)
-                    });
-                } else {
-                    // Add new item
-                    response = await fetch('/api/items', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(itemData)
-                    });
-                }
-
-                if (response.ok) {
-                    e.target.reset();
-                    document.getElementById('imageButtonText').textContent = 'Choose Image';
-                    
-                    // Reset form button text and remove editId
-                    submitButton.textContent = 'Add Item';
-                    delete submitButton.dataset.editId;
-                    
-                    // Reload the menu items
-                    loadMenu();
-                    loadAdminMenuItems();
-                    alert('Item saved successfully!');
-                } else {
-                    alert('Failed to save item. Please try again.');
-                }
-            } catch (error) {
-                console.error('Error saving item:', error);
-                alert('Failed to save item. Please try again.');
-            }
-        });
 
         // Modified deleteItem function
         async function deleteItem(id) {
@@ -1266,8 +1336,15 @@
         async function filterAdminItems(searchTerm) {
             try {
                 const response = await fetch('/api/items');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const items = await response.json();
                 
+                if (!Array.isArray(items)) {
+                    throw new Error('Invalid response format from API');
+                }
+
                 const filteredItems = items.filter(item => 
                     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                     item.category_name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -1276,10 +1353,11 @@
                 const adminMenuItems = document.getElementById('adminMenuItems');
                 adminMenuItems.innerHTML = filteredItems.map(item => `
                     <div class="border border-white/10 p-4 rounded flex justify-between items-center">
-                        <div>
+                        <div class="flex-1">
                             <h3 class="font-semibold text-white">${item.name}</h3>
                             <p class="text-gray-300">${item.category_name}</p>
                             <p class="text-gray-300">${item.price.toLocaleString()} تومان</p>
+                            ${item.description ? `<p class="text-gray-400 text-sm mt-1">${item.description}</p>` : ''}
                         </div>
                         <div class="flex gap-2">
                             <button onclick="editItem(${item.id})" class="text-blue-400 hover:text-blue-300" title="Edit">
@@ -1297,7 +1375,13 @@
                 `).join('');
             } catch (error) {
                 console.error('Error filtering items:', error);
-                alert('Failed to filter items. Please try again.');
+                const adminMenuItems = document.getElementById('adminMenuItems');
+                adminMenuItems.innerHTML = `
+                    <div class="col-span-full text-center py-12">
+                        <p class="text-gray-300 text-lg">Failed to filter items. Please try again later.</p>
+                        <p class="text-gray-400 text-sm mt-2">Error: ${error.message}</p>
+                    </div>
+                `;
             }
         }
 
@@ -1360,6 +1444,19 @@
                 }
             } catch (error) {
                 console.error('Error loading background image:', error);
+            }
+        }
+
+        // Image upload handler
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('imageUrl').value = e.target.result;
+                    document.getElementById('imageButtonText').textContent = file.name;
+                };
+                reader.readAsDataURL(file);
             }
         }
 

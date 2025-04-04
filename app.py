@@ -2,6 +2,7 @@ from flask import Flask, send_from_directory, jsonify, request
 from models import db, Category, MenuItem, WallpaperSettings
 from config import SQLALCHEMY_DATABASE_URI, SECRET_KEY
 import os
+from datetime import datetime
 
 app = Flask(__name__, static_folder='.')
 app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
@@ -43,12 +44,53 @@ def create_category():
     db.session.commit()
     return jsonify(category.to_dict()), 201
 
-@app.route('/api/categories/<int:category_id>', methods=['DELETE'])
-def delete_category(category_id):
-    category = Category.query.get_or_404(category_id)
-    db.session.delete(category)
-    db.session.commit()
-    return '', 204
+@app.route('/api/categories/<int:category_id>', methods=['GET', 'PUT', 'DELETE'])
+def category(category_id):
+    try:
+        if request.method == 'GET':
+            category = Category.query.get(category_id)
+            if not category:
+                return jsonify({'error': 'Category not found'}), 404
+            return jsonify({
+                'id': category.id,
+                'name': category.name
+            })
+        elif request.method == 'PUT':
+            data = request.get_json()
+            if not data:
+                return jsonify({'error': 'No data provided'}), 400
+                
+            category = Category.query.get(category_id)
+            if not category:
+                return jsonify({'error': 'Category not found'}), 404
+                
+            if 'name' in data:
+                category.name = data['name']
+                try:
+                    db.session.commit()
+                    return jsonify({
+                        'id': category.id,
+                        'name': category.name
+                    })
+                except Exception as e:
+                    db.session.rollback()
+                    return jsonify({'error': str(e)}), 500
+            return jsonify({'error': 'No valid data provided'}), 400
+        elif request.method == 'DELETE':
+            category = Category.query.get(category_id)
+            if not category:
+                return jsonify({'error': 'Category not found'}), 404
+            try:
+                # Delete all items in this category first
+                MenuItem.query.filter_by(category_id=category_id).delete()
+                db.session.delete(category)
+                db.session.commit()
+                return jsonify({'message': 'Category deleted successfully'})
+            except Exception as e:
+                db.session.rollback()
+                return jsonify({'error': str(e)}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/items', methods=['GET'])
 def get_items():
@@ -71,6 +113,13 @@ def create_item():
     db.session.add(item)
     db.session.commit()
     return jsonify(item.to_dict()), 201
+
+@app.route('/api/items/<int:item_id>', methods=['GET'])
+def get_item(item_id):
+    item = MenuItem.query.get(item_id)
+    if not item:
+        return jsonify({'error': 'Item not found'}), 404
+    return jsonify(item.to_dict())
 
 @app.route('/api/items/<int:item_id>', methods=['PUT'])
 def update_item(item_id):
