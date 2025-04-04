@@ -897,87 +897,218 @@
         });
 
         // Category management
-        function loadCategories() {
-            const categorySelect = document.getElementById('category');
-            const categoriesList = document.getElementById('categoriesList');
-            
-            // Update select options with better styling and RTL support
-            categorySelect.innerHTML = `
-                <option value="" disabled selected>Select Category</option>
-                ${categories.map(cat => 
-                    `<option value="${cat}">${cat}</option>`
-                ).join('')}
-            `;
+        async function loadCategories() {
+            try {
+                const response = await fetch('/api/categories');
+                const categories = await response.json();
+                
+                const categorySelect = document.getElementById('category');
+                const categoriesList = document.getElementById('categoriesList');
+                
+                // Update select options with better styling and RTL support
+                categorySelect.innerHTML = `
+                    <option value="" disabled selected>Select Category</option>
+                    ${categories.map(cat => 
+                        `<option value="${cat.id}">${cat.name}</option>`
+                    ).join('')}
+                `;
 
-            // Update categories list with edit functionality
-            categoriesList.innerHTML = categories.map(cat => `
-                <div class="flex justify-between items-center p-2 bg-white/5 rounded">
-                    <span class="text-white">${cat}</span>
-                    <div class="flex gap-2">
-                        ${cat !== 'Special Items' ? `
-                            <button onclick="editCategory('${cat}')" class="text-blue-400 hover:text-blue-300" title="Edit">
+                // Update categories list with edit functionality
+                categoriesList.innerHTML = categories.map(cat => `
+                    <div class="flex justify-between items-center p-2 bg-white/5 rounded">
+                        <span class="text-white">${cat.name}</span>
+                        <div class="flex gap-2">
+                            <button onclick="editCategory(${cat.id}, '${cat.name}')" class="text-blue-400 hover:text-blue-300" title="Edit">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                 </svg>
                             </button>
-                            <button onclick="deleteCategory('${cat}')" class="text-red-400 hover:text-red-300" title="Delete">
+                            <button onclick="deleteCategory(${cat.id})" class="text-red-400 hover:text-red-300" title="Delete">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                 </svg>
                             </button>
-                        ` : ''}
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `).join('');
 
-            // Update category navigation
-            loadCategoryNav();
-        }
-
-        // Add edit category functionality
-        function editCategory(category) {
-            const newName = prompt('Enter new category name:', category);
-            if (newName && newName !== category && !categories.includes(newName)) {
-                // Update category name in categories array
-                const index = categories.indexOf(category);
-                categories[index] = newName;
-                
-                // Update category name in menu items
-                menuItems.forEach(item => {
-                    if (item.category === category) {
-                        item.category = newName;
-                    }
-                });
-                
-                loadCategories();
-                loadMenu();
-                loadAdminMenuItems();
-                saveMenu();
+                // Update category navigation
+                loadCategoryNav();
+            } catch (error) {
+                console.error('Error loading categories:', error);
+                alert('Failed to load categories. Please try again.');
             }
         }
 
+        // Add edit category functionality
+        async function editCategory(categoryId, currentName) {
+            const newName = prompt('Enter new category name:', currentName);
+            if (newName && newName !== currentName) {
+                try {
+                    const response = await fetch(`/api/categories/${categoryId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ name: newName })
+                    });
+                    
+                    if (response.ok) {
+                        loadCategories();
+                    } else {
+                        alert('Failed to update category. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Error updating category:', error);
+                    alert('Failed to update category. Please try again.');
+                }
+            }
+        }
+
+        // Add delete category functionality
+        async function deleteCategory(categoryId) {
+            if (confirm('Are you sure you want to delete this category? This will also delete all items in this category.')) {
+                try {
+                    const response = await fetch(`/api/categories/${categoryId}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (response.ok) {
+                        loadCategories();
+                        loadMenu();
+                    } else {
+                        alert('Failed to delete category. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Error deleting category:', error);
+                    alert('Failed to delete category. Please try again.');
+                }
+            }
+        }
+
+        // Add category form handler
+        document.getElementById('addCategoryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newCategory = document.getElementById('newCategory').value.trim();
+            
+            if (newCategory) {
+                try {
+                    const response = await fetch('/api/categories', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ name: newCategory })
+                    });
+                    
+                    if (response.ok) {
+                        document.getElementById('newCategory').value = '';
+                        loadCategories();
+                    } else {
+                        alert('Failed to add category. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Error adding category:', error);
+                    alert('Failed to add category. Please try again.');
+                }
+            }
+        });
+
         // Category navigation
-        function loadCategoryNav() {
-            const categoryNav = document.getElementById('categoryNav');
-            categoryNav.innerHTML = `
-                <button class="category-button active" onclick="filterByCategory('all')">All</button>
-                ${categories.map(cat => `
-                    <button class="category-button" onclick="filterByCategory('${cat}')">${cat}</button>
-                `).join('')}
-            `;
+        async function loadCategoryNav() {
+            try {
+                const response = await fetch('/api/categories');
+                const categories = await response.json();
+                
+                const categoryNav = document.querySelector('.category-nav');
+                categoryNav.innerHTML = `
+                    <button class="category-button active" onclick="filterByCategory('all')">All</button>
+                    ${categories.map(cat => `
+                        <button class="category-button" onclick="filterByCategory('${cat.id}')">${cat.name}</button>
+                    `).join('')}
+                `;
+            } catch (error) {
+                console.error('Error loading category navigation:', error);
+            }
         }
 
         let currentCategory = 'all';
 
-        function filterByCategory(category) {
-            currentCategory = category;
-            document.querySelectorAll('.category-button').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.textContent === category || (category === 'all' && btn.textContent === 'All')) {
-                    btn.classList.add('active');
+        // Filter menu items by category
+        async function filterByCategory(categoryId) {
+            try {
+                const response = await fetch('/api/items');
+                const items = await response.json();
+                
+                const filteredItems = categoryId === 'all' 
+                    ? items 
+                    : items.filter(item => item.category_id === parseInt(categoryId));
+                
+                const menuContainer = document.getElementById('menuContainer');
+                menuContainer.innerHTML = '';
+                
+                if (categoryId === 'all') {
+                    // Group items by category
+                    const itemsByCategory = filteredItems.reduce((acc, item) => {
+                        if (!acc[item.category_name]) {
+                            acc[item.category_name] = [];
+                        }
+                        acc[item.category_name].push(item);
+                        return acc;
+                    }, {});
+                    
+                    // Show all categories
+                    Object.entries(itemsByCategory).forEach(([category, items]) => {
+                        const categorySection = document.createElement('div');
+                        categorySection.className = 'col-span-full';
+                        categorySection.innerHTML = `
+                            <h3 class="text-3xl font-bold text-white mb-6 mt-8">${category}</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+                                ${items.map(item => `
+                                    <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                                        <img src="${item.image_url}" alt="${item.name}">
+                                        <div class="content">
+                                            <h4 class="text-xl font-semibold text-white">${item.name}</h4>
+                                            <p class="text-gray-300">${item.description.substring(0, 100)}...</p>
+                                            <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `;
+                        menuContainer.appendChild(categorySection);
+                    });
+                } else {
+                    // Show items for selected category
+                    const category = await fetch(`/api/categories/${categoryId}`).then(res => res.json());
+                    menuContainer.innerHTML = `
+                        <div class="col-span-full">
+                            <h3 class="text-3xl font-bold text-white mb-6">${category.name}</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+                                ${filteredItems.map(item => `
+                                    <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                                        <img src="${item.image_url}" alt="${item.name}">
+                                        <div class="content">
+                                            <h4 class="text-xl font-semibold text-white">${item.name}</h4>
+                                            <p class="text-gray-300">${item.description.substring(0, 100)}...</p>
+                                            <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
                 }
-            });
-            loadMenu();
+                
+                // Update active button
+                document.querySelectorAll('.category-button').forEach(button => {
+                    button.classList.remove('active');
+                });
+                document.querySelector(`.category-button[onclick="filterByCategory('${categoryId}')"]`).classList.add('active');
+            } catch (error) {
+                console.error('Error filtering items:', error);
+                alert('Failed to load menu items. Please try again.');
+            }
         }
 
         function loadAdminMenuItems() {
@@ -1183,5 +1314,4 @@
         loadBackgroundImage();
     </script>
 </body>
-</html> 
 </html> 
