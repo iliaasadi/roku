@@ -620,59 +620,70 @@
         let isDarkMode = true;
 
         // Modified loadMenu function
-        function loadMenu() {
-            const itemsByCategory = menuItems.reduce((acc, item) => {
-                if (!acc[item.category]) {
-                    acc[item.category] = [];
-                }
-                acc[item.category].push(item);
-                return acc;
-            }, {});
+        async function loadMenu() {
+            try {
+                const response = await fetch('/api/items');
+                const items = await response.json();
+                
+                const itemsByCategory = items.reduce((acc, item) => {
+                    if (!acc[item.category_name]) {
+                        acc[item.category_name] = [];
+                    }
+                    acc[item.category_name].push(item);
+                    return acc;
+                }, {});
 
-            const menuContainer = document.getElementById('menuContainer');
-            menuContainer.innerHTML = '';
+                const menuContainer = document.getElementById('menuContainer');
+                menuContainer.innerHTML = '';
 
-            if (currentCategory === 'all') {
-                // Show all categories
-                Object.entries(itemsByCategory).forEach(([category, items]) => {
-                    const categorySection = document.createElement('div');
-                    categorySection.className = 'col-span-full';
-                    categorySection.innerHTML = `
-                        <h3 class="text-3xl font-bold text-white mb-6 mt-8">${category}</h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-                            ${items.map(item => `
-                                <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                                    <img src="${item.imageUrl}" alt="${item.name}">
-                                    <div class="content">
-                                        <h4 class="text-xl font-semibold text-white">${item.name}</h4>
-                                        <p class="text-gray-300">${item.description.substring(0, 100)}...</p>
-                                        <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
+                if (currentCategory === 'all') {
+                    // Show all categories
+                    Object.entries(itemsByCategory).forEach(([category, items]) => {
+                        const categorySection = document.createElement('div');
+                        categorySection.className = 'col-span-full';
+                        categorySection.innerHTML = `
+                            <h3 class="text-3xl font-bold text-white mb-6 mt-8">${category}</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+                                ${items.map(item => `
+                                    <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                                        <img src="${item.image_url}" alt="${item.name}">
+                                        <div class="content">
+                                            <h4 class="text-xl font-semibold text-white">${item.name}</h4>
+                                            <p class="text-gray-300">${item.description.substring(0, 100)}...</p>
+                                            <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
+                                        </div>
                                     </div>
-                                </div>
-                            `).join('')}
+                                `).join('')}
+                            </div>
+                        `;
+                        menuContainer.appendChild(categorySection);
+                    });
+                } else {
+                    // Show items for selected category
+                    const category = await fetch(`/api/categories/${currentCategory}`).then(res => res.json());
+                    const filteredItems = items.filter(item => item.category_id === parseInt(currentCategory));
+                    
+                    menuContainer.innerHTML = `
+                        <div class="col-span-full">
+                            <h3 class="text-3xl font-bold text-white mb-6">${category.name}</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+                                ${filteredItems.map(item => `
+                                    <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                                        <img src="${item.image_url}" alt="${item.name}">
+                                        <div class="content">
+                                            <h4 class="text-xl font-semibold text-white">${item.name}</h4>
+                                            <p class="text-gray-300">${item.description.substring(0, 100)}...</p>
+                                            <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
                         </div>
                     `;
-                    menuContainer.appendChild(categorySection);
-                });
-            } else {
-                const items = itemsByCategory[currentCategory] || [];
-                menuContainer.innerHTML = `
-                    <div class="col-span-full">
-                        <h3 class="text-3xl font-bold text-white mb-6">${currentCategory}</h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-                            ${items.map(item => `
-                                <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                                    <img src="${item.imageUrl}" alt="${item.name}">
-                                    <div class="content">
-                                        <h4 class="text-xl font-semibold text-white">${item.name}</h4>
-                                        <p class="text-gray-300">${item.description.substring(0, 100)}...</p>
-                                        <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
+                }
+            } catch (error) {
+                console.error('Error loading menu:', error);
+                alert('Failed to load menu items. Please try again.');
             }
         }
 
@@ -786,15 +797,40 @@
         }
 
         // Modified resetDatabase function
-        function resetDatabase() {
+        async function resetDatabase() {
             if (confirm('Are you sure you want to reset all data? This will delete all categories and items.')) {
-                menuItems = [];
-                categories = ['Main Menu'];
-                localStorage.removeItem('rokuMenu');
-                loadCategories();
-                loadMenu();
-                loadAdminMenuItems();
-                alert('Database has been reset successfully!');
+                try {
+                    // Delete all items
+                    const itemsResponse = await fetch('/api/items', {
+                        method: 'DELETE'
+                    });
+                    
+                    // Delete all categories except the default one
+                    const categoriesResponse = await fetch('/api/categories', {
+                        method: 'DELETE'
+                    });
+                    
+                    if (itemsResponse.ok && categoriesResponse.ok) {
+                        // Create default category
+                        await fetch('/api/categories', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ name: 'Main Menu' })
+                        });
+                        
+                        loadCategories();
+                        loadMenu();
+                        loadAdminMenuItems();
+                        alert('Database has been reset successfully!');
+                    } else {
+                        alert('Failed to reset database. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Error resetting database:', error);
+                    alert('Failed to reset database. Please try again.');
+                }
             }
         }
 
@@ -1117,7 +1153,7 @@
                 <div class="border border-white/10 p-4 rounded flex justify-between items-center">
                     <div>
                         <h3 class="font-semibold text-white">${item.name}</h3>
-                        <p class="text-gray-300">${item.category}</p>
+                        <p class="text-gray-300">${item.category_name}</p>
                         <p class="text-gray-300">${item.price.toLocaleString()} تومان</p>
                     </div>
                     <div class="flex gap-2">
@@ -1137,31 +1173,32 @@
         }
 
         // Modified editItem function
-        function editItem(id) {
-            const item = menuItems.find(item => item.id === id);
-            if (!item) return;
+        async function editItem(id) {
+            try {
+                const response = await fetch(`/api/items/${id}`);
+                const item = await response.json();
+                
+                if (!item) return;
 
-            // Fill the form with item data
-            document.getElementById('category').value = item.category;
-            document.getElementById('name').value = item.name;
-            document.getElementById('price').value = item.price;
-            document.getElementById('description').value = item.description;
-            document.getElementById('imageUrl').value = item.imageUrl;
+                // Fill the form with item data
+                document.getElementById('category').value = item.category_id;
+                document.getElementById('name').value = item.name;
+                document.getElementById('price').value = item.price;
+                document.getElementById('description').value = item.description;
+                document.getElementById('imageUrl').value = item.image_url;
+                document.getElementById('imageButtonText').textContent = 'Current Image';
 
-            // Change form button text and add data-id
-            const submitButton = document.querySelector('#addItemForm button[type="submit"]');
-            submitButton.textContent = 'Update Item';
-            submitButton.dataset.editId = id;
+                // Change form button text and add data-id
+                const submitButton = document.querySelector('#addItemForm button[type="submit"]');
+                submitButton.textContent = 'Update Item';
+                submitButton.dataset.editId = id;
 
-            // Remove the item from the list temporarily
-            menuItems = menuItems.filter(item => item.id !== id);
-
-            // Update the display
-            loadMenu();
-            loadAdminMenuItems();
-
-            // Scroll to the form
-            document.getElementById('addItemForm').scrollIntoView({ behavior: 'smooth' });
+                // Scroll to the form
+                document.getElementById('addItemForm').scrollIntoView({ behavior: 'smooth' });
+            } catch (error) {
+                console.error('Error loading item for editing:', error);
+                alert('Failed to load item details. Please try again.');
+            }
         }
 
         // Image upload handler
@@ -1178,7 +1215,7 @@
         }
 
         // Modified addItemForm handler
-        document.getElementById('addItemForm').addEventListener('submit', (e) => {
+        document.getElementById('addItemForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const category = document.getElementById('category').value;
             if (!category) {
@@ -1196,47 +1233,76 @@
                 return;
             }
 
-            if (editId) {
-                // Update existing item
-                const newItem = {
-                    id: parseInt(editId),
-                    category: category,
+            try {
+                const itemData = {
+                    category_id: parseInt(category),
                     name: document.getElementById('name').value,
                     price: parseFloat(document.getElementById('price').value),
                     description: description || '',
-                    imageUrl: imageUrl
+                    image_url: imageUrl
                 };
-                menuItems.push(newItem);
-            } else {
-                // Add new item
-                const newItem = {
-                    id: menuItems.length + 1,
-                    category: category,
-                    name: document.getElementById('name').value,
-                    price: parseFloat(document.getElementById('price').value),
-                    description: description || '',
-                    imageUrl: imageUrl
-                };
-                menuItems.push(newItem);
-            }
 
-            e.target.reset();
-            document.getElementById('imageButtonText').textContent = 'Choose Image';
-            
-            // Reset form button text and remove editId
-            submitButton.textContent = 'Add Item';
-            delete submitButton.dataset.editId;
-            
-            loadMenu();
-            loadAdminMenuItems();
-            saveMenu(); // Save changes immediately
+                let response;
+                if (editId) {
+                    // Update existing item
+                    response = await fetch(`/api/items/${editId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(itemData)
+                    });
+                } else {
+                    // Add new item
+                    response = await fetch('/api/items', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(itemData)
+                    });
+                }
+
+                if (response.ok) {
+                    e.target.reset();
+                    document.getElementById('imageButtonText').textContent = 'Choose Image';
+                    
+                    // Reset form button text and remove editId
+                    submitButton.textContent = 'Add Item';
+                    delete submitButton.dataset.editId;
+                    
+                    // Reload the menu items
+                    loadMenu();
+                    loadAdminMenuItems();
+                    alert('Item saved successfully!');
+                } else {
+                    alert('Failed to save item. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error saving item:', error);
+                alert('Failed to save item. Please try again.');
+            }
         });
 
-        function deleteItem(id) {
+        // Modified deleteItem function
+        async function deleteItem(id) {
             if (confirm('Are you sure you want to delete this item?')) {
-                menuItems = menuItems.filter(item => item.id !== id);
-                loadMenu();
-                loadAdminMenuItems();
+                try {
+                    const response = await fetch(`/api/items/${id}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (response.ok) {
+                        loadMenu();
+                        loadAdminMenuItems();
+                        alert('Item deleted successfully!');
+                    } else {
+                        alert('Failed to delete item. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Error deleting item:', error);
+                    alert('Failed to delete item. Please try again.');
+                }
             }
         }
 
@@ -1245,14 +1311,14 @@
             const adminMenuItems = document.getElementById('adminMenuItems');
             const filteredItems = menuItems.filter(item => 
                 item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                item.category.toLowerCase().includes(searchTerm.toLowerCase())
+                item.category_name.toLowerCase().includes(searchTerm.toLowerCase())
             );
             
             adminMenuItems.innerHTML = filteredItems.map(item => `
                 <div class="border border-white/10 p-4 rounded flex justify-between items-center">
                     <div>
                         <h3 class="font-semibold text-white">${item.name}</h3>
-                        <p class="text-gray-300">${item.category}</p>
+                        <p class="text-gray-300">${item.category_name}</p>
                         <p class="text-gray-300">${item.price.toLocaleString()} تومان</p>
                     </div>
                     <div class="flex gap-2">
@@ -1284,31 +1350,58 @@
         }
 
         // Background image upload handler
-        function handleBackgroundImageUpload(event) {
+        async function handleBackgroundImageUpload(event) {
             const file = event.target.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('backgroundImageUrl').value = e.target.result;
+                reader.onload = async function(e) {
+                    const imageData = e.target.result;
+                    document.getElementById('backgroundImageUrl').value = imageData;
                     document.getElementById('backgroundImageButtonText').textContent = file.name;
-                    document.body.style.backgroundImage = `url('${e.target.result}')`;
-                    localStorage.setItem('backgroundImage', e.target.result);
+                    
+                    try {
+                        const response = await fetch('/api/wallpaper', {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ background_image: imageData })
+                        });
+                        
+                        if (response.ok) {
+                            document.body.style.backgroundImage = `url('${imageData}')`;
+                            alert('Background image updated successfully!');
+                        } else {
+                            alert('Failed to update background image. Please try again.');
+                        }
+                    } catch (error) {
+                        console.error('Error updating background image:', error);
+                        alert('Failed to update background image. Please try again.');
+                    }
                 };
                 reader.readAsDataURL(file);
             }
         }
 
         // Load saved background image on startup
-        function loadBackgroundImage() {
-            const savedBackground = localStorage.getItem('backgroundImage');
-            if (savedBackground) {
-                document.body.style.backgroundImage = `url('${savedBackground}')`;
+        async function loadBackgroundImage() {
+            try {
+                const response = await fetch('/api/wallpaper');
+                const data = await response.json();
+                
+                if (data.background_image) {
+                    document.body.style.backgroundImage = `url('${data.background_image}')`;
+                    document.getElementById('backgroundImageUrl').value = data.background_image;
+                    document.getElementById('backgroundImageButtonText').textContent = 'Current Background';
+                }
+            } catch (error) {
+                console.error('Error loading background image:', error);
             }
         }
 
         // Initial load
         loadTheme();
-        loadSavedMenu();
+        loadCategories();
         loadCategoryNav();
         loadMenu();
         loadBackgroundImage();
