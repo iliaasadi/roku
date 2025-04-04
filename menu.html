@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ROKU - Bar & Restaurant</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #000;
+            color: #fff;
+            background-image: url('https://images.unsplash.com/photo-1514933651103-005eec06c04b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+        .overlay {
+            background: rgba(0, 0, 0, 0.7);
+            min-height: 100vh;
+        }
+        h1, h2 {
+            font-family: 'Playfair Display', serif;
+        }
+        .menu-item {
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+        }
+        .menu-item:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        .glass-effect {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .admin-panel {
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(20px);
+        }
+        .input-style {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+        .input-style:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        .item-detail {
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(20px);
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay">
+        <header class="glass-effect">
+            <div class="max-w-6xl mx-auto px-4 py-6">
+                <div class="flex justify-between items-center">
+                    <h1 class="text-4xl font-bold text-white">ROKU</h1>
+                    <button onclick="showLoginModal()" class="text-white hover:text-gray-300 transition">Admin Panel</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-6xl mx-auto px-4 py-12">
+            <div class="text-center mb-16">
+                <h2 class="text-5xl font-bold text-white mb-4">Our Menu</h2>
+                <p class="text-gray-300 text-lg">Experience the finest dining in town</p>
+            </div>
+
+            <div id="menuContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Menu items will be populated here -->
+            </div>
+        </main>
+
+        <footer class="glass-effect mt-12 py-8">
+            <div class="max-w-6xl mx-auto px-4 text-center text-gray-300">
+                <p>&copy; 2024 ROKU Bar & Restaurant. All rights reserved.</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Item Detail Modal -->
+    <div id="itemDetailModal" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center">
+        <div class="item-detail p-8 rounded-lg max-w-4xl w-full mx-4 border border-white/10">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="itemDetailTitle" class="text-3xl font-bold text-white"></h2>
+                <button onclick="hideItemDetail()" class="text-gray-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <img id="itemDetailImage" src="" alt="" class="w-full h-64 object-cover rounded-lg mb-4">
+                    <p id="itemDetailDescription" class="text-gray-300 text-lg"></p>
+                </div>
+                <div>
+                    <p id="itemDetailCategory" class="text-xl text-white mb-4"></p>
+                    <p id="itemDetailPrice" class="text-2xl font-bold text-white mb-6"></p>
+                    <div id="itemDetailIngredients" class="text-gray-300"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center">
+        <div class="bg-black p-8 rounded-lg max-w-md w-full mx-4 border border-white/10">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-white">Admin Login</h2>
+                <button onclick="hideLoginModal()" class="text-gray-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-gray-300 mb-2">Password</label>
+                    <input type="password" id="adminPassword" class="input-style w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-white/20" required>
+                </div>
+                <button type="submit" class="w-full bg-white text-black py-2 rounded hover:bg-gray-200 transition">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Panel Modal -->
+    <div id="adminPanel" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center">
+        <div class="admin-panel p-8 rounded-lg max-w-4xl w-full mx-4 border border-white/10">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-white">Admin Panel</h2>
+                <button onclick="hideAdminPanel()" class="text-gray-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="space-y-8">
+                <!-- Category Management -->
+                <div>
+                    <h3 class="text-xl font-semibold text-white mb-4">Manage Categories</h3>
+                    <form id="addCategoryForm" class="space-y-4">
+                        <div class="flex gap-4">
+                            <div class="flex-1">
+                                <label class="block text-gray-300 mb-2">New Category</label>
+                                <input type="text" id="newCategory" class="input-style w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-white/20" required>
+                            </div>
+                            <div class="flex items-end">
+                                <button type="submit" class="bg-white text-black py-2 px-4 rounded hover:bg-gray-200 transition">Add Category</button>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="categoriesList" class="mt-4 space-y-2">
+                        <!-- Categories will be listed here -->
+                    </div>
+                </div>
+
+                <!-- Item Management -->
+                <div>
+                    <h3 class="text-xl font-semibold text-white mb-4">Add New Item</h3>
+                    <form id="addItemForm" class="space-y-4">
+                        <div>
+                            <label class="block text-gray-300 mb-2">Category</label>
+                            <select id="category" class="input-style w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-white/20" required>
+                                <!-- Categories will be populated here -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-300 mb-2">Name</label>
+                            <input type="text" id="name" class="input-style w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-white/20" required>
+                        </div>
+                        <div>
+                            <label class="block text-gray-300 mb-2">Price</label>
+                            <input type="number" id="price" step="0.01" class="input-style w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-white/20" required>
+                        </div>
+                        <div>
+                            <label class="block text-gray-300 mb-2">Image URL</label>
+                            <input type="url" id="imageUrl" class="input-style w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-white/20" required>
+                        </div>
+                        <div>
+                            <label class="block text-gray-300 mb-2">Description</label>
+                            <textarea id="description" class="input-style w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-white/20" required></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-gray-300 mb-2">Ingredients</label>
+                            <textarea id="ingredients" class="input-style w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-white/20" placeholder="Enter ingredients, one per line" required></textarea>
+                        </div>
+                        <button type="submit" class="w-full bg-white text-black py-2 rounded hover:bg-gray-200 transition">Add Item</button>
+                    </form>
+                </div>
+
+                <div>
+                    <h3 class="text-xl font-semibold text-white mb-4">Current Menu Items</h3>
+                    <div id="adminMenuItems" class="space-y-4">
+                        <!-- Admin menu items will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample menu items with more details
+        let menuItems = [
+            {
+                id: 1,
+                category: 'Cocktails',
+                name: 'Signature Martini',
+                price: 15.00,
+                description: 'Our signature martini is crafted with premium vodka and dry vermouth, finished with a twist of fresh lemon. A perfect balance of sophistication and flavor.',
+                imageUrl: 'https://images.unsplash.com/photo-1575023782549-62ca0d244b39?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+                ingredients: 'Premium Vodka\nDry Vermouth\nFresh Lemon\nOlive (optional)'
+            },
+            {
+                id: 2,
+                category: 'Appetizers',
+                name: 'Truffle Fries',
+                price: 12.00,
+                description: 'Hand-cut potato fries tossed with truffle oil, fresh herbs, and grated parmesan cheese. Served with our house-made truffle aioli.',
+                imageUrl: 'https://images.unsplash.com/photo-1600657644142-977c5a638650?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+                ingredients: 'Hand-cut Potatoes\nTruffle Oil\nFresh Herbs\nParmesan Cheese\nTruffle Aioli'
+            }
+        ];
+
+        // Categories management
+        let categories = ['Cocktails', 'Wine', 'Appetizers', 'Main Course', 'Desserts'];
+
+        // Admin password
+        const ADMIN_PASSWORD = 'roku2024';
+
+        // Modal functions
+        function showLoginModal() {
+            document.getElementById('loginModal').classList.remove('hidden');
+            document.getElementById('loginModal').classList.add('flex');
+        }
+
+        function hideLoginModal() {
+            document.getElementById('loginModal').classList.add('hidden');
+            document.getElementById('loginModal').classList.remove('flex');
+        }
+
+        function showAdminPanel() {
+            document.getElementById('adminPanel').classList.remove('hidden');
+            document.getElementById('adminPanel').classList.add('flex');
+            loadAdminMenuItems();
+            loadCategories();
+        }
+
+        function hideAdminPanel() {
+            document.getElementById('adminPanel').classList.add('hidden');
+            document.getElementById('adminPanel').classList.remove('flex');
+        }
+
+        function showItemDetail(item) {
+            document.getElementById('itemDetailTitle').textContent = item.name;
+            document.getElementById('itemDetailImage').src = item.imageUrl;
+            document.getElementById('itemDetailDescription').textContent = item.description;
+            document.getElementById('itemDetailCategory').textContent = item.category;
+            document.getElementById('itemDetailPrice').textContent = `$${item.price.toFixed(2)}`;
+            document.getElementById('itemDetailIngredients').innerHTML = item.ingredients.split('\n').map(ing => `<p>• ${ing}</p>`).join('');
+            
+            document.getElementById('itemDetailModal').classList.remove('hidden');
+            document.getElementById('itemDetailModal').classList.add('flex');
+        }
+
+        function hideItemDetail() {
+            document.getElementById('itemDetailModal').classList.add('hidden');
+            document.getElementById('itemDetailModal').classList.remove('flex');
+        }
+
+        // Category management
+        function loadCategories() {
+            const categorySelect = document.getElementById('category');
+            const categoriesList = document.getElementById('categoriesList');
+            
+            // Update select options
+            categorySelect.innerHTML = categories.map(cat => 
+                `<option value="${cat}">${cat}</option>`
+            ).join('');
+
+            // Update categories list
+            categoriesList.innerHTML = categories.map(cat => `
+                <div class="flex justify-between items-center p-2 bg-white/5 rounded">
+                    <span class="text-white">${cat}</span>
+                    <button onclick="deleteCategory('${cat}')" class="text-red-400 hover:text-red-300">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function deleteCategory(category) {
+            if (confirm(`Are you sure you want to delete the category "${category}"? This will also delete all items in this category.`)) {
+                categories = categories.filter(cat => cat !== category);
+                menuItems = menuItems.filter(item => item.category !== category);
+                loadCategories();
+                loadMenu();
+                loadAdminMenuItems();
+            }
+        }
+
+        // Add category form handler
+        document.getElementById('addCategoryForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const newCategory = document.getElementById('newCategory').value.trim();
+            if (newCategory && !categories.includes(newCategory)) {
+                categories.push(newCategory);
+                document.getElementById('newCategory').value = '';
+                loadCategories();
+            }
+        });
+
+        // Load menu items
+        function loadMenu() {
+            const itemsByCategory = menuItems.reduce((acc, item) => {
+                if (!acc[item.category]) {
+                    acc[item.category] = [];
+                }
+                acc[item.category].push(item);
+                return acc;
+            }, {});
+
+            const menuContainer = document.getElementById('menuContainer');
+            menuContainer.innerHTML = '';
+
+            Object.entries(itemsByCategory).forEach(([category, items]) => {
+                const categorySection = document.createElement('div');
+                categorySection.className = 'col-span-full';
+                categorySection.innerHTML = `
+                    <h3 class="text-3xl font-bold text-white mb-6 mt-8">${category}</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        ${items.map(item => `
+                            <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetail(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                                <img src="${item.imageUrl}" alt="${item.name}" class="w-full h-48 object-cover">
+                                <div class="p-6">
+                                    <h4 class="text-xl font-semibold text-white mb-2">${item.name}</h4>
+                                    <p class="text-gray-300 mb-4">${item.description.substring(0, 100)}...</p>
+                                    <p class="text-lg font-semibold text-white">$${item.price.toFixed(2)}</p>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                menuContainer.appendChild(categorySection);
+            });
+        }
+
+        function loadAdminMenuItems() {
+            const adminMenuItems = document.getElementById('adminMenuItems');
+            adminMenuItems.innerHTML = menuItems.map(item => `
+                <div class="border border-white/10 p-4 rounded flex justify-between items-center">
+                    <div>
+                        <h3 class="font-semibold text-white">${item.name}</h3>
+                        <p class="text-gray-300">${item.category}</p>
+                        <p class="text-gray-300">$${item.price.toFixed(2)}</p>
+                    </div>
+                    <button onclick="deleteItem(${item.id})" class="text-red-400 hover:text-red-300">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Add new item
+        document.getElementById('addItemForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const newItem = {
+                id: menuItems.length + 1,
+                category: document.getElementById('category').value,
+                name: document.getElementById('name').value,
+                price: parseFloat(document.getElementById('price').value),
+                description: document.getElementById('description').value,
+                imageUrl: document.getElementById('imageUrl').value,
+                ingredients: document.getElementById('ingredients').value
+            };
+            menuItems.push(newItem);
+            e.target.reset();
+            loadMenu();
+            loadAdminMenuItems();
+        });
+
+        // Delete item
+        function deleteItem(id) {
+            if (confirm('Are you sure you want to delete this item?')) {
+                menuItems = menuItems.filter(item => item.id !== id);
+                loadMenu();
+                loadAdminMenuItems();
+            }
+        }
+
+        // Login form handler
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const password = document.getElementById('adminPassword').value;
+            if (password === ADMIN_PASSWORD) {
+                hideLoginModal();
+                showAdminPanel();
+            } else {
+                alert('Incorrect password');
+            }
+        });
+
+        // Initial load
+        loadMenu();
+    </script>
+</body>
+</html> 

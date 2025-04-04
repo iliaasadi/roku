@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cafe Menu</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8f5f2;
+        }
+        h1, h2 {
+            font-family: 'Playfair Display', serif;
+        }
+        .menu-item {
+            transition: transform 0.2s;
+        }
+        .menu-item:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <header class="bg-white shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 py-6">
+            <div class="flex justify-between items-center">
+                <h1 class="text-3xl font-bold text-gray-800">Our Cafe</h1>
+                <a href="/admin" class="text-sm text-gray-600 hover:text-gray-800">Admin Login</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-8">
+        <div class="text-center mb-12">
+            <h2 class="text-4xl font-bold text-gray-800 mb-4">Our Menu</h2>
+            <p class="text-gray-600">Discover our delicious selection of fresh pastries, beverages, and more</p>
+        </div>
+
+        <div id="menuContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- Menu items will be populated here -->
+        </div>
+    </main>
+
+    <footer class="bg-white mt-12 py-8">
+        <div class="max-w-6xl mx-auto px-4 text-center text-gray-600">
+            <p>&copy; 2024 Our Cafe. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        async function loadMenu() {
+            try {
+                const response = await fetch('/api/menu');
+                const items = await response.json();
+                
+                // Group items by category
+                const itemsByCategory = items.reduce((acc, item) => {
+                    if (!acc[item.category]) {
+                        acc[item.category] = [];
+                    }
+                    acc[item.category].push(item);
+                    return acc;
+                }, {});
+
+                const menuContainer = document.getElementById('menuContainer');
+                menuContainer.innerHTML = '';
+
+                // Create sections for each category
+                Object.entries(itemsByCategory).forEach(([category, items]) => {
+                    const categorySection = document.createElement('div');
+                    categorySection.className = 'col-span-full';
+                    categorySection.innerHTML = `
+                        <h3 class="text-2xl font-bold text-gray-800 mb-6 mt-8">${category}</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            ${items.map(item => `
+                                <div class="menu-item bg-white rounded-lg shadow-md overflow-hidden">
+                                    <div class="p-6">
+                                        <h4 class="text-xl font-semibold text-gray-800 mb-2">${item.name}</h4>
+                                        <p class="text-gray-600 mb-4">${item.description}</p>
+                                        <p class="text-lg font-semibold text-gray-800">$${item.price.toFixed(2)}</p>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    menuContainer.appendChild(categorySection);
+                });
+            } catch (error) {
+                console.error('Error loading menu:', error);
+            }
+        }
+
+        // Load menu when page loads
+        loadMenu();
+    </script>
+</body>
+</html> 
