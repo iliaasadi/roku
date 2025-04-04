@@ -37,4 +37,16 @@ class MenuItem(db.Model):
             'category_name': self.category.name if self.category else None,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
+        }
+
+class WallpaperSettings(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    background_image = db.Column(db.String(500))
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'background_image': self.background_image,
+            'updated_at': self.updated_at.isoformat()
         } 

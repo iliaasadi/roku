@@ -1,16 +1,22 @@
 from flask import Flask, send_from_directory, jsonify, request
-from models import db, Category, MenuItem
-from config import SQLALCHEMY_DATABASE_URI
+from models import db, Category, MenuItem, WallpaperSettings
+from config import SQLALCHEMY_DATABASE_URI, SECRET_KEY
 import os
 
 app = Flask(__name__, static_folder='.')
 app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = SECRET_KEY
 db.init_app(app)
 
 # Create database tables
 with app.app_context():
     db.create_all()
+    # Create default wallpaper settings if not exists
+    if not WallpaperSettings.query.first():
+        default_wallpaper = WallpaperSettings(background_image='')
+        db.session.add(default_wallpaper)
+        db.session.commit()
 
 @app.route('/')
 def serve_index():
@@ -91,6 +97,31 @@ def delete_item(item_id):
     db.session.delete(item)
     db.session.commit()
     return '', 204
+
+@app.route('/api/wallpaper', methods=['GET'])
+def get_wallpaper():
+    wallpaper = WallpaperSettings.query.first()
+    if not wallpaper:
+        wallpaper = WallpaperSettings(background_image='')
+        db.session.add(wallpaper)
+        db.session.commit()
+    return jsonify(wallpaper.to_dict())
+
+@app.route('/api/wallpaper', methods=['PUT'])
+def update_wallpaper():
+    data = request.get_json()
+    if not data or 'background_image' not in data:
+        return jsonify({'error': 'Background image URL is required'}), 400
+    
+    wallpaper = WallpaperSettings.query.first()
+    if not wallpaper:
+        wallpaper = WallpaperSettings(background_image=data['background_image'])
+        db.session.add(wallpaper)
+    else:
+        wallpaper.background_image = data['background_image']
+    
+    db.session.commit()
+    return jsonify(wallpaper.to_dict())
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True) 
