@@ -713,15 +713,6 @@
             saveButton.textContent = 'Save Changes';
             saveButton.onclick = saveMenu;
             document.body.appendChild(saveButton);
-
-            // Add reset button
-            const resetButton = document.createElement('button');
-            resetButton.className = 'save-button';
-            resetButton.style.right = '150px';
-            resetButton.style.backgroundColor = 'red';
-            resetButton.textContent = 'Reset Database';
-            resetButton.onclick = resetDatabase;
-            document.body.appendChild(resetButton);
         }
 
         // Modified hideAdminPanel function
@@ -738,12 +729,6 @@
             const saveButton = document.querySelector('.save-button');
             if (saveButton) {
                 saveButton.remove();
-            }
-
-            // Remove reset button
-            const resetButton = document.querySelector('.save-button[style*="right: 150px"]');
-            if (resetButton) {
-                resetButton.remove();
             }
             
             // Reset form button text
@@ -792,49 +777,6 @@
                     categories = ['Main Menu'];
                     menuItems = [];
                     saveMenu();
-                }
-            }
-        }
-
-        // Modified resetDatabase function
-        async function resetDatabase() {
-            if (confirm('Are you sure you want to reset all data? This will delete all categories and items.')) {
-                try {
-                    // Delete all items
-                    const itemsResponse = await fetch('/api/items', {
-                        method: 'DELETE'
-                    });
-                    
-                    // Delete all categories
-                    const categoriesResponse = await fetch('/api/categories', {
-                        method: 'DELETE'
-                    });
-                    
-                    if (itemsResponse.ok && categoriesResponse.ok) {
-                        // Create default category
-                        const defaultCategoryResponse = await fetch('/api/categories', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ name: 'Main Menu' })
-                        });
-                        
-                        if (defaultCategoryResponse.ok) {
-                            // Reload everything
-                            await loadCategories();
-                            await loadMenu();
-                            await loadAdminMenuItems();
-                            alert('Database has been reset successfully!');
-                        } else {
-                            alert('Failed to create default category. Please try again.');
-                        }
-                    } else {
-                        alert('Failed to reset database. Please try again.');
-                    }
-                } catch (error) {
-                    console.error('Error resetting database:', error);
-                    alert('Failed to reset database. Please try again.');
                 }
             }
         }
