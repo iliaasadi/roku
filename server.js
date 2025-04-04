@@ -15,23 +15,9 @@ app.use(express.static('public'));
 
 // In-memory storage (replace with database in production)
 let menuItems = [
-    {
-        id: 1,
-        category: 'Beverages',
-        name: 'Espresso',
-        price: 3.50,
-        description: 'Rich and bold single shot espresso'
-    },
-    {
-        id: 2,
-        category: 'Pastries',
-        name: 'Croissant',
-        price: 3.00,
-        description: 'Buttery, flaky French-style croissant'
-    }
 ];
 
-let categories = ['Beverages', 'Pastries', 'Sandwiches', 'Desserts'];
+let categories = [];
 
 // Admin credentials (replace with proper authentication in production)
 const ADMIN_USERNAME = 'admin';
