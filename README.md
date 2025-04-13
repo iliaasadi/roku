@@ -21,8 +21,8 @@ Visit the live website: [ROKU](https://rokurestaurantsrj.ir/)
 
 ## Technologies Used
 
-- **Frontend**: [e.g., React, Vue.js, HTML/CSS/JS] *(Replace with actual tech stack)*
-- **Backend**: [e.g., Node.js, Django, etc.] *(Replace with actual tech stack)*
-- **Database**: [e.g., MySQL, MongoDB] *(Replace with actual tech stack)*
+- **Frontend**: [e.g., React, Vue.js, HTML/CSS/JS] 
+- **Backend**: [e.g., Node.js, Django, etc.] 
+- **Database**: [e.g., MySQL, MongoDB]
 
 ---
