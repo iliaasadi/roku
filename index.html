@@ -11,7 +11,7 @@
             font-family: 'Poppins', sans-serif;
             background-color: #000;
             color: #fff;
-            background-image: url('https://images.unsplash.com/photo-1514933651103-005eec06c04b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80');
+            background-image: url('WhatsApp Image 2025-04-12 at 19.55.08_35ed1ea1.jpg');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -493,9 +493,9 @@
             <!-- Main Content -->
             <main class="container mx-auto px-4 py-8">
                 <!-- Categories Button -->
-                <div class="fixed right-4 top-1/2 transform -translate-y-1/2 z-50">
-                    <button onclick="toggleCategories()" class="bg-white/10 hover:bg-white/20 text-white p-3 rounded-lg flex items-center transition-all">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="fixed left-4 top-1/2 transform -translate-y-1/2 z-50">
+                    <button onclick="toggleCategories()" class="bg-white/20 hover:bg-white/30 text-white p-4 rounded-lg flex items-center transition-all shadow-lg">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
                     </button>
@@ -615,23 +615,6 @@
                     </form>
                     <div id="categoriesList" class="mt-3 space-y-2">
                         <!-- Categories will be listed here -->
-                    </div>
-                </div>
-
-                <!-- Background Image Management -->
-                <div>
-                    <h3 class="text-lg font-semibold text-white mb-3">Website Background</h3>
-                    <div class="space-y-3">
-                        <input type="hidden" id="backgroundImageUrl" class="input-style">
-                        <div class="relative">
-                            <input type="file" id="backgroundImageUpload" accept="image/*" class="hidden" onchange="handleBackgroundImageUpload(event)">
-                            <button type="button" onclick="document.getElementById('backgroundImageUpload').click()" class="input-style w-full p-2 rounded focus:outline-none focus:ring-2 focus:ring-white/20 text-left flex items-center justify-between">
-                                <span id="backgroundImageButtonText">Choose Background Image</span>
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
-                            </button>
-                        </div>
                     </div>
                 </div>
 
@@ -1462,56 +1445,6 @@
             loadMenu(); // Reload menu after saving
         }
 
-        // Background image upload handler
-        async function handleBackgroundImageUpload(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = async function(e) {
-                    const imageData = e.target.result;
-                    document.getElementById('backgroundImageUrl').value = imageData;
-                    document.getElementById('backgroundImageButtonText').textContent = file.name;
-                    
-                    try {
-                        const response = await fetch('/api/wallpaper', {
-                            method: 'PUT',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ background_image: imageData })
-                        });
-                        
-                        if (response.ok) {
-                            document.body.style.backgroundImage = `url('${imageData}')`;
-                            alert('Background image updated successfully!');
-                        } else {
-                            alert('Failed to update background image. Please try again.');
-                        }
-                    } catch (error) {
-                        console.error('Error updating background image:', error);
-                        alert('Failed to update background image. Please try again.');
-                    }
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        // Load saved background image on startup
-        async function loadBackgroundImage() {
-            try {
-                const response = await fetch('/api/wallpaper');
-                const data = await response.json();
-                
-                if (data.background_image) {
-                    document.body.style.backgroundImage = `url('${data.background_image}')`;
-                    document.getElementById('backgroundImageUrl').value = data.background_image;
-                    document.getElementById('backgroundImageButtonText').textContent = 'Current Background';
-                }
-            } catch (error) {
-                console.error('Error loading background image:', error);
-            }
-        }
-
         // Image upload handler
         function handleImageUpload(event) {
             const file = event.target.files[0];
@@ -1546,7 +1479,6 @@
         loadTheme();
         loadCategories();
         loadMenu();
-        loadBackgroundImage();
 
         // Add item form handler
         document.getElementById('addItemForm').addEventListener('submit', async (e) => {
