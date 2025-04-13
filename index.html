@@ -383,16 +383,70 @@
             background: white;
             color: black;
         }
+        .blur-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease-in-out;
+            z-index: 30;
+        }
+        .blur-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        #categoriesSidebar {
+            box-shadow: -4px 0 15px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+        }
+        #categoriesSidebar .p-4 {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        #categories {
+            overflow-y: auto;
+            flex: 1;
+            padding-right: 8px;
+            margin-right: -8px;
+        }
+        #categories::-webkit-scrollbar {
+            width: 6px;
+        }
+        #categories::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+        #categories::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+        #categories::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+        .light-mode #categories::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        .light-mode #categories::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.3);
+        }
+        .light-mode #categories::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.4);
+        }
     </style>
 </head>
 <body>
+    <div class="blur-overlay" id="blurOverlay" onclick="toggleCategories()"></div>
     <div class="overlay">
         <header class="glass-effect">
             <div class="max-w-6xl mx-auto px-4 py-6">
                 <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                     <div class="flex items-center gap-4">
-                        <div class="w-16 h-16 rounded-full overflow-hidden cursor-pointer transition-transform hover:scale-110" onclick="window.location.reload()">
-                            <img src="WhatsApp Image 2025-04-02 at 03.19.27_ff0df955.jpg" 
+                        <div class="w-16 h-16 rounded-full overflow-hidden cursor-pointer transition-transform hover:scale-110" onclick="handleLogoClick()">
+                            <img src="logo.jpg" 
                                  alt="ROKU Logo" 
                                  class="w-full h-full object-cover">
                         </div>
@@ -436,16 +490,39 @@
                 <p class="text-gray-300 text-lg">Experience the finest dining in town</p>
             </div>
 
-            <!-- Category Navigation -->
-            <div class="category-nav">
-                <div class="category-nav-content" id="categoryNav">
-                    <!-- Categories will be populated here -->
+            <!-- Main Content -->
+            <main class="container mx-auto px-4 py-8">
+                <!-- Categories Button -->
+                <div class="fixed right-4 top-1/2 transform -translate-y-1/2 z-50">
+                    <button onclick="toggleCategories()" class="bg-white/10 hover:bg-white/20 text-white p-3 rounded-lg flex items-center transition-all">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
                 </div>
-            </div>
 
-            <div id="menuContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <!-- Menu items will be populated here -->
-            </div>
+                <!-- Categories Sidebar -->
+                <div id="categoriesSidebar" class="fixed right-0 top-0 h-full w-64 bg-black/90 transform translate-x-full transition-transform duration-300 ease-in-out z-40">
+                    <div class="p-4">
+                        <div class="flex justify-between items-center mb-4 sticky top-0 bg-black/90 py-2">
+                            <h2 class="text-xl font-bold text-white">Categories</h2>
+                            <button onclick="toggleCategories()" class="text-gray-400 hover:text-white">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div id="categories" class="space-y-2">
+                            <!-- Categories will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Menu Container -->
+                <div id="menuContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+                    <!-- Menu items will be loaded here -->
+                </div>
+            </main>
         </main>
 
         <footer class="glass-effect mt-12 py-8">
@@ -609,6 +686,7 @@
     <script>
         // Sample menu items with more details
         let menuItems = [];
+        let currentCategory = 'all';
 
         // Categories management
         let categories = [];
@@ -747,6 +825,14 @@
                 alert('Changes saved successfully!');
             };
             document.body.appendChild(saveButton);
+            
+            // Add reset database button
+            const resetButton = document.createElement('button');
+            resetButton.className = 'save-button';
+            resetButton.style.right = '150px';
+            resetButton.textContent = 'Reset Database';
+            resetButton.onclick = resetDatabase;
+            document.body.appendChild(resetButton);
         }
 
         // Modified hideAdminPanel function
@@ -766,6 +852,12 @@
                 saveButton.remove();
             }
             
+            // Remove reset button
+            const resetButton = document.querySelector('.save-button:nth-child(2)');
+            if (resetButton) {
+                resetButton.remove();
+            }
+            
             // Reset form button text
             const submitButton = document.querySelector('#addItemForm button[type="submit"]');
             if (submitButton) {
@@ -776,6 +868,29 @@
             // Reset form
             document.getElementById('addItemForm').reset();
             document.getElementById('imageButtonText').textContent = 'Choose Image';
+        }
+
+        // Add resetDatabase function
+        async function resetDatabase() {
+            if (confirm('Are you sure you want to reset the database? This will delete all items and categories. This action cannot be undone.')) {
+                try {
+                    const response = await fetch('/api/reset', {
+                        method: 'POST'
+                    });
+                    
+                    if (response.ok) {
+                        alert('Database reset successfully!');
+                        loadCategories();
+                        loadMenu();
+                        loadAdminMenuItems();
+                    } else {
+                        alert('Failed to reset database. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Error resetting database:', error);
+                    alert('Failed to reset database. Please try again.');
+                }
+            }
         }
 
         // Modified deleteCategory function
@@ -923,43 +1038,60 @@
         async function loadCategories() {
             try {
                 const response = await fetch('/api/categories');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const categories = await response.json();
                 
-                const categorySelect = document.getElementById('category');
-                const categoriesList = document.getElementById('categoriesList');
-                
-                // Update select options with better styling and RTL support
-                categorySelect.innerHTML = `
-                    <option value="" disabled selected>Select Category</option>
-                    ${categories.map(cat => 
-                        `<option value="${cat.id}">${cat.name}</option>`
-                    ).join('')}
+                // Update sidebar categories
+                const categoriesContainer = document.getElementById('categories');
+                categoriesContainer.innerHTML = `
+                    <button onclick="filterByCategory('all')" class="w-full text-left px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-colors">
+                        All Items
+                    </button>
+                    ${categories.map(category => `
+                        <button onclick="filterByCategory(${category.id})" class="w-full text-left px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-colors">
+                            ${category.name}
+                        </button>
+                    `).join('')}
                 `;
 
-                // Update categories list with edit functionality
-                categoriesList.innerHTML = categories.map(cat => `
+                // Update admin panel category select
+                const categorySelect = document.getElementById('category');
+                categorySelect.innerHTML = `
+                    <option value="">Select a category</option>
+                    ${categories.map(category => `
+                        <option value="${category.id}">${category.name}</option>
+                    `).join('')}
+                `;
+
+                // Update admin panel categories list
+                const categoriesList = document.getElementById('categoriesList');
+                categoriesList.innerHTML = categories.map(category => `
                     <div class="flex justify-between items-center p-2 bg-white/5 rounded">
-                        <span class="text-white">${cat.name}</span>
+                        <span class="text-white">${category.name}</span>
                         <div class="flex gap-2">
-                            <button onclick="editCategory(${cat.id}, '${cat.name}')" class="text-blue-400 hover:text-blue-300" title="Edit">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <button onclick="editCategory(${category.id}, '${category.name}')" class="text-blue-400 hover:text-blue-300">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                 </svg>
                             </button>
-                            <button onclick="deleteCategory(${cat.id})" class="text-red-400 hover:text-red-300" title="Delete">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            <button onclick="deleteCategory(${category.id})" class="text-red-400 hover:text-red-300">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                 </svg>
                             </button>
                         </div>
                     </div>
                 `).join('');
-
-                // Update category navigation
-                loadCategoryNav();
             } catch (error) {
                 console.error('Error loading categories:', error);
-                alert('Failed to load categories. Please try again.');
+                const categoriesContainer = document.getElementById('categories');
+                categoriesContainer.innerHTML = `
+                    <div class="text-red-400 text-center py-4">
+                        Failed to load categories. Please try again later.
+                    </div>
+                `;
             }
         }
 
@@ -1037,30 +1169,10 @@
             }
         });
 
-        // Category navigation
-        async function loadCategoryNav() {
-            try {
-                const response = await fetch('/api/categories');
-                const categories = await response.json();
-                
-                const categoryNav = document.querySelector('.category-nav');
-                categoryNav.innerHTML = `
-                    <button class="category-button active" onclick="filterByCategory('all')">All</button>
-                    ${categories.map(cat => `
-                        <button class="category-button" onclick="filterByCategory('${cat.id}')">${cat.name}</button>
-                    `).join('')}
-                `;
-            } catch (error) {
-                console.error('Error loading category navigation:', error);
-            }
-        }
-
-        let currentCategory = 'all';
-
-        // Filter menu items by category
+        // Update the filterByCategory function to work with sidebar
         async function filterByCategory(categoryId) {
             try {
-                currentCategory = categoryId; // Update the current category
+                currentCategory = categoryId;
                 const response = await fetch('/api/items');
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -1161,14 +1273,8 @@
                     }
                 }
                 
-                // Update active button
-                document.querySelectorAll('.category-button').forEach(button => {
-                    button.classList.remove('active');
-                });
-                const activeButton = document.querySelector(`.category-button[onclick="filterByCategory('${categoryId}')"]`);
-                if (activeButton) {
-                    activeButton.classList.add('active');
-                }
+                // Close the sidebar after selecting a category
+                toggleCategories();
             } catch (error) {
                 console.error('Error filtering items:', error);
                 const menuContainer = document.getElementById('menuContainer');
@@ -1254,8 +1360,8 @@
                 nameInput.value = item.name;
                 priceInput.value = item.price;
                 descriptionInput.value = item.description || '';
-                imageUrlInput.value = item.image_url;
-                imageButtonText.textContent = item.image_url ? 'Current Image' : 'Choose Image';
+                imageUrlInput.value = item.image_url || '';
+                imageButtonText.textContent = item.image_url ? 'Current Image' : 'Choose Image (Optional)';
 
                 // Update submit button text and add data attribute
                 submitButton.textContent = 'Update Item';
@@ -1263,47 +1369,6 @@
 
                 // Scroll to form
                 form.scrollIntoView({ behavior: 'smooth' });
-
-                // Update form submit handler
-                form.onsubmit = async (e) => {
-                    e.preventDefault();
-                    
-                    const formData = {
-                        category_id: parseInt(categorySelect.value),
-                        name: nameInput.value,
-                        price: parseFloat(priceInput.value),
-                        description: descriptionInput.value,
-                        image_url: imageUrlInput.value
-                    };
-
-                    try {
-                        const updateResponse = await fetch(`/api/items/${itemId}`, {
-                            method: 'PUT',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(formData)
-                        });
-
-                        if (!updateResponse.ok) {
-                            throw new Error('Failed to update item');
-                        }
-
-                        // Reset form
-                        form.reset();
-                        imageButtonText.textContent = 'Choose Image';
-                        submitButton.textContent = 'Add Item';
-                        delete submitButton.dataset.editId;
-
-                        // Reload items
-                        await loadMenu();
-                        await loadAdminMenuItems();
-                        alert('Item updated successfully!');
-                    } catch (error) {
-                        console.error('Error updating item:', error);
-                        alert('Failed to update item. Please try again.');
-                    }
-                };
             } catch (error) {
                 console.error('Error in editItem:', error);
                 alert('Failed to load item details. Please try again.');
@@ -1460,12 +1525,89 @@
             }
         }
 
+        // Add this new function for toggling categories
+        function toggleCategories() {
+            const sidebar = document.getElementById('categoriesSidebar');
+            const overlay = document.getElementById('blurOverlay');
+            sidebar.classList.toggle('translate-x-full');
+            overlay.classList.toggle('active');
+            
+            // Prevent body scrolling when sidebar is open
+            document.body.style.overflow = sidebar.classList.contains('translate-x-full') ? '' : 'hidden';
+        }
+
+        // Add the handleLogoClick function
+        function handleLogoClick() {
+            currentCategory = 'all';
+            loadMenu();
+        }
+
         // Initial load
         loadTheme();
         loadCategories();
-        loadCategoryNav();
         loadMenu();
         loadBackgroundImage();
+
+        // Add item form handler
+        document.getElementById('addItemForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const categoryId = document.getElementById('category').value;
+            const name = document.getElementById('name').value;
+            const price = document.getElementById('price').value;
+            const description = document.getElementById('description').value;
+            const imageUrl = document.getElementById('imageUrl').value;
+            
+            if (!categoryId || !name || !price) {
+                alert('Please fill in all required fields (Category, Name, and Price)');
+                return;
+            }
+            
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            const isEdit = submitButton.dataset.editId;
+            
+            try {
+                const itemData = {
+                    category_id: parseInt(categoryId),
+                    name: name,
+                    price: parseFloat(price),
+                    description: description,
+                    image_url: imageUrl || 'logo.jpg' // Use logo.jpg as default image
+                };
+                
+                console.log('Sending item data:', itemData);
+                
+                const response = await fetch('/api/items' + (isEdit ? `/${isEdit}` : ''), {
+                    method: isEdit ? 'PUT' : 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(itemData)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                }
+                
+                // Reset form
+                e.target.reset();
+                document.getElementById('imageButtonText').textContent = 'Choose Image (Optional)';
+                
+                // Reset submit button
+                submitButton.textContent = 'Add Item';
+                delete submitButton.dataset.editId;
+                
+                // Reload menu and admin items
+                await loadMenu();
+                await loadAdminMenuItems();
+                
+                alert(isEdit ? 'Item updated successfully!' : 'Item added successfully!');
+            } catch (error) {
+                console.error('Error saving item:', error);
+                alert('Failed to save item: ' + error.message);
+            }
+        });
     </script>
 </body>
 </html> 
