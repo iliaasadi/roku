@@ -30,34 +30,47 @@
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             cursor: pointer;
-            height: 100%;
+            height: 120px; /* Reduced height */
             display: flex;
-            flex-direction: column;
+            flex-direction: row; /* Changed to row */
+            align-items: center;
+            padding: 0.5rem;
+            gap: 1rem;
         }
         .menu-item img {
-            height: 200px;
+            height: 100px; /* Reduced image height */
+            width: 100px; /* Fixed width */
             object-fit: cover;
+            border-radius: 0.5rem;
         }
         .menu-item .content {
             flex: 1;
             display: flex;
             flex-direction: column;
-            padding: 1rem;
+            justify-content: center;
+            padding: 0.5rem;
+            height: 100%;
         }
         .menu-item h4 {
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.25rem;
+            font-size: 1rem; /* Smaller font size */
         }
         .menu-item p {
-            flex: 1;
-            margin-bottom: 1rem;
+            margin-bottom: 0.25rem;
+            font-size: 0.875rem; /* Smaller font size */
+            display: -webkit-box;
+            -webkit-line-clamp: 2; /* Limit to 2 lines */
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
         .menu-item .price {
             margin-top: auto;
+            font-size: 0.875rem; /* Smaller font size */
         }
         .menu-item:hover {
-            transform: translateY(-5px);
+            transform: translateY(-2px);
             background: rgba(255, 255, 255, 0.15);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
         .glass-effect {
             background: rgba(0, 0, 0, 0.8);
@@ -446,6 +459,41 @@
         .light-mode .menu-toggle {
             border: 1px solid rgba(0, 0, 0, 0.2);
         }
+        .menu-container {
+            max-height: calc(100vh - 10rem); /* Adjusted for header and footer */
+            overflow-y: auto;
+            padding-right: 8px;
+            margin-right: -8px;
+        }
+        .menu-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        .menu-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+        .menu-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+        .menu-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+        .light-mode .menu-container::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        .light-mode .menu-container::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.3);
+        }
+        .light-mode .menu-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.4);
+        }
+        #itemDetailImage {
+            width: 100%; /* Make the image take the full width of the modal */
+            height: auto; /* Maintain aspect ratio */
+            max-height: 400px; /* Set a maximum height for the image */
+            object-fit: contain; /* Ensure the image is fully visible */
+        }
     </style>
 </head>
 <body>
@@ -468,26 +516,24 @@
                                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.012-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
                                 </svg>
-                                Instagram
                             </a>
                             <a href="tel:+989199616772" class="social-link">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                                 </svg>
-                                +98 919 961 6772
                             </a>
                             <a href="https://maps.app.goo.gl/88nYsoEtuPMPohZ78?g_st=aw" target="_blank" class="social-link">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                                 </svg>
-                                Location
                             </a>
                         </div>
                         <button onclick="toggleCategories()" class="menu-toggle bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg flex items-center transition-all">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                             </svg>
+                            منو
                         </button>
                         <button onclick="toggleTheme()" class="theme-toggle">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -500,10 +546,7 @@
         </header>
 
         <main class="max-w-6xl mx-auto px-4 py-12">
-            <div class="text-center mb-16">
-                <h2 class="text-5xl font-bold text-white mb-4">Our Menu</h2>
-                <p class="text-gray-300 text-lg">Experience the finest dining in town</p>
-            </div>
+            
 
             <!-- Main Content -->
             <main class="container mx-auto px-4 py-8">
@@ -525,8 +568,10 @@
                 </div>
 
                 <!-- Menu Container -->
-                <div id="menuContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-                    <!-- Menu items will be loaded here -->
+                <div class="menu-container">
+                    <div id="menuContainer" class="grid grid-cols-1 gap-2">
+                        <!-- Menu items will be loaded here -->
+                    </div>
                 </div>
             </main>
         </main>
@@ -560,13 +605,12 @@
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
-                    <img id="itemDetailImage" src="" alt="" class="w-full h-64 object-cover rounded-lg mb-4">
+                    <img id="itemDetailImage" src="" alt="" class="w-full h-auto object-cover rounded-lg mb-4">
                     <p id="itemDetailDescription" class="text-gray-300 text-lg"></p>
                 </div>
                 <div>
                     <p id="itemDetailCategory" class="text-xl text-white mb-4"></p>
                     <p id="itemDetailPrice" class="text-2xl font-bold text-white mb-6"></p>
-                    <div id="itemDetailIngredients" class="text-gray-300"></div>
                 </div>
             </div>
         </div>
@@ -734,15 +778,15 @@
                         categorySection.className = 'col-span-full';
                         categorySection.innerHTML = `
                             <h3 class="text-3xl font-bold text-white mb-6 mt-8">${category}</h3>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+                            <div class="grid grid-cols-1 gap-2">
                                 ${items.map(item => `
                                     <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
                                         <img src="${item.image_url}" alt="${item.name}">
                                         <div class="content">
                                             <h4 class="text-xl font-semibold text-white">${item.name}</h4>
-                                            <p class="text-gray-300">${item.description.substring(0, 100)}...</p>
-                                            <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
+                                            <p class="text-gray-300">${item.description.substring(0, 100)}</p>
                                         </div>
+                                        <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
                                     </div>
                                 `).join('')}
                             </div>
@@ -763,15 +807,15 @@
                         menuContainer.innerHTML = `
                             <div class="col-span-full">
                                 <h3 class="text-3xl font-bold text-white mb-6">${category.name}</h3>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+                                <div class="grid grid-cols-1 gap-2">
                                     ${filteredItems.map(item => `
                                         <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
                                             <img src="${item.image_url}" alt="${item.name}">
                                             <div class="content">
                                                 <h4 class="text-xl font-semibold text-white">${item.name}</h4>
-                                                <p class="text-gray-300">${item.description.substring(0, 100)}...</p>
-                                                <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
+                                                <p class="text-gray-300">${item.description.substring(0, 100)}</p>
                                             </div>
+                                            <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
                                         </div>
                                     `).join('')}
                                 </div>
@@ -832,13 +876,7 @@
             };
             document.body.appendChild(saveButton);
             
-            // Add reset database button
-            const resetButton = document.createElement('button');
-            resetButton.className = 'save-button';
-            resetButton.style.right = '150px';
-            resetButton.textContent = 'Reset Database';
-            resetButton.onclick = resetDatabase;
-            document.body.appendChild(resetButton);
+    
         }
 
         // Modified hideAdminPanel function
@@ -874,29 +912,6 @@
             // Reset form
             document.getElementById('addItemForm').reset();
             document.getElementById('imageButtonText').textContent = 'Choose Image';
-        }
-
-        // Add resetDatabase function
-        async function resetDatabase() {
-            if (confirm('Are you sure you want to reset the database? This will delete all items and categories. This action cannot be undone.')) {
-                try {
-                    const response = await fetch('/api/reset', {
-                        method: 'POST'
-                    });
-                    
-                    if (response.ok) {
-                        alert('Database reset successfully!');
-                        loadCategories();
-                        loadMenu();
-                        loadAdminMenuItems();
-                    } else {
-                        alert('Failed to reset database. Please try again.');
-                    }
-                } catch (error) {
-                    console.error('Error resetting database:', error);
-                    alert('Failed to reset database. Please try again.');
-                }
-            }
         }
 
         // Modified deleteCategory function
@@ -980,52 +995,32 @@
         }
 
         function showItemDetails(item) {
-            const detailsContainer = document.getElementById('itemDetails');
-            const categoryBar = document.getElementById('categoryBar');
-            
-            // Hide category bar and menu items
-            categoryBar.style.display = 'none';
-            document.getElementById('menuItems').style.display = 'none';
-            
-            detailsContainer.innerHTML = `
-                <div class="max-w-4xl mx-auto p-6">
-                    <div class="flex justify-between items-start mb-6">
-                        <h2 class="text-3xl font-bold text-white">${item.name}</h2>
-                        <button onclick="hideItemDetails()" class="text-white hover:text-gray-300">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div class="relative">
-                            <img src="${item.imageUrl}" alt="${item.name}" class="w-full h-96 object-cover rounded-lg shadow-lg">
-                        </div>
-                        <div class="space-y-4">
-                            <p class="text-xl text-white">${item.description}</p>
-                            <p class="text-2xl font-bold text-white">${item.price.toLocaleString()} تومان</p>
-                            <div class="flex items-center gap-2">
-                                <span class="px-3 py-1 bg-white/10 rounded-full text-white">${item.category}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            detailsContainer.style.display = 'block';
-            detailsContainer.scrollIntoView({ behavior: 'smooth' });
+            const detailsContainer = document.getElementById('itemDetailModal');
+            const itemDetailTitle = document.getElementById('itemDetailTitle');
+            const itemDetailImage = document.getElementById('itemDetailImage');
+            const itemDetailDescription = document.getElementById('itemDetailDescription');
+            const itemDetailCategory = document.getElementById('itemDetailCategory');
+            const itemDetailPrice = document.getElementById('itemDetailPrice');
+
+            // Set the item details
+            itemDetailTitle.textContent = item.name;
+            itemDetailImage.src = item.image_url;
+            itemDetailDescription.textContent = item.description;
+            itemDetailCategory.textContent = item.category_name; // Assuming category_name is available
+            itemDetailPrice.textContent = `${item.price.toLocaleString()} تومان`;
+
+            // Show the modal
+            detailsContainer.classList.remove('hidden');
+            detailsContainer.classList.add('flex');
+            document.body.style.backgroundColor = 'black'; // Set background to black
         }
 
-        function hideItemDetails() {
-            const detailsContainer = document.getElementById('itemDetails');
-            const categoryBar = document.getElementById('categoryBar');
-            const menuItems = document.getElementById('menuItems');
-            
-            // Show category bar and menu items
-            categoryBar.style.display = 'flex';
-            menuItems.style.display = 'grid';
-            
-            detailsContainer.style.display = 'none';
+        // Function to hide the item detail modal
+        function hideItemDetail() {
+            const detailsContainer = document.getElementById('itemDetailModal');
+            detailsContainer.classList.add('hidden');
+            detailsContainer.classList.remove('flex');
+            document.body.style.backgroundColor = ''; // Reset background color
         }
 
         // Login form handler
@@ -1208,15 +1203,15 @@
                         categorySection.className = 'col-span-full';
                         categorySection.innerHTML = `
                             <h3 class="text-3xl font-bold text-white mb-6 mt-8">${category}</h3>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+                            <div class="grid grid-cols-1 gap-2">
                                 ${items.map(item => `
                                     <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
                                         <img src="${item.image_url}" alt="${item.name}">
                                         <div class="content">
                                             <h4 class="text-xl font-semibold text-white">${item.name}</h4>
-                                            <p class="text-gray-300">${item.description.substring(0, 100)}...</p>
-                                            <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
+                                            <p class="text-gray-300">${item.description.substring(0, 100)}</p>
                                         </div>
+                                        <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
                                     </div>
                                 `).join('')}
                             </div>
@@ -1246,15 +1241,15 @@
                             menuContainer.innerHTML = `
                                 <div class="col-span-full">
                                     <h3 class="text-3xl font-bold text-white mb-6">${category.name}</h3>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+                                    <div class="grid grid-cols-1 gap-2">
                                         ${filteredItems.map(item => `
                                             <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
                                                 <img src="${item.image_url}" alt="${item.name}">
                                                 <div class="content">
                                                     <h4 class="text-xl font-semibold text-white">${item.name}</h4>
-                                                    <p class="text-gray-300">${item.description.substring(0, 100)}...</p>
-                                                    <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
+                                                    <p class="text-gray-300">${item.description.substring(0, 100)}</p>
                                                 </div>
+                                                <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
                                             </div>
                                         `).join('')}
                                     </div>
