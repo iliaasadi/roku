@@ -754,23 +754,43 @@ let observer;
 let currentChunkIndex = 0;
 const ITEMS_PER_PAGE = 10;
 let currentCategoryItems = [];
-let categoryCache = {};
+let categoryCache = new Map();
 
-// Modified loadMenu function with lazy loading
+// Add these variables at the top of the script section
+let imageObserver;
+let menuObserver;
+let currentOffset = 0;
+const itemsPerPage = 10;
+let isLoading = false;
+let hasMoreItems = true;
+
+// Modified loadMenu function to handle category sections
 async function loadMenu() {
+    if (isLoading || !hasMoreItems) return;
+    isLoading = true;
+
     try {
-        const response = await fetch('/api/items');
+        const response = await fetch(`/api/items?offset=${currentOffset}&limit=${itemsPerPage}&category=${currentCategory}`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const items = await response.json();
         
+        if (!Array.isArray(items)) {
+            throw new Error('Invalid response format from API');
+        }
+
         const menuContainer = document.getElementById('menuContainer');
-        menuContainer.innerHTML = '';
         
+        // If it's the first load or category changed, clear the container
+        if (currentOffset === 0) {
+            menuContainer.innerHTML = '';
+        }
+
         if (currentCategory === 'all') {
-            // Group items by category for 'all' view
+            // Group items by category
             const itemsByCategory = items.reduce((acc, item) => {
                 if (!acc[item.category_id]) {
                     acc[item.category_id] = {
+                        id: item.category_id,
                         name: item.category_name,
                         items: []
                     };
@@ -779,148 +799,175 @@ async function loadMenu() {
                 return acc;
             }, {});
 
-            // Render category sections with placeholders
+            // Create category sections
             Object.values(itemsByCategory).forEach(category => {
                 const categorySection = document.createElement('div');
-                categorySection.className = 'category-section';
+                categorySection.className = 'category-section mb-12';
                 categorySection.innerHTML = `
-                    <h3 class="text-3xl font-bold text-white mb-6 mt-8">${category.name}</h3>
-                    <div class="grid grid-cols-1 gap-2" data-category-id="${category.id}"></div>
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-3xl font-bold text-white">${category.name}</h3>
+                        <button onclick="filterByCategory(${category.id})" 
+                                class="text-white hover:text-gray-300 transition-colors flex items-center gap-2">
+                            View All
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 gap-2">
+                        ${category.items.slice(0, 3).map(item => `
+                            <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                                <img data-src="${item.image_url}" alt="${item.name}" class="lazy-load" loading="lazy">
+                                <div class="content">
+                                    <h4 class="text-xl font-semibold text-white">${item.name}</h4>
+                                    <p class="text-gray-300">${item.description.substring(0, 100)}</p>
+                                </div>
+                                <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
+                            </div>
+                        `).join('')}
+                    </div>
                 `;
                 menuContainer.appendChild(categorySection);
             });
-
-            // Set up intersection observers for each category
-            document.querySelectorAll('.category-section').forEach(section => {
-                const observer = new IntersectionObserver((entries) => {
-                    entries.forEach(entry => {
-                        if (entry.isIntersecting) {
-                            const categoryId = entry.target.querySelector('div').dataset.categoryId;
-                            const categoryItems = items.filter(item => item.category_id === categoryId);
-                            renderCategoryItems(categoryItems, entry.target.querySelector('div'));
-                            observer.unobserve(entry.target);
-                        }
-                    });
-                }, { rootMargin: '100px' });
-                
-                observer.observe(section);
-            });
         } else {
-            // Handle individual category with pagination
-            currentCategoryItems = items.filter(item => item.category_id === parseInt(currentCategory));
-            currentChunkIndex = 0;
-            renderNextChunk();
-            setupScrollObserver();
+            // Create a document fragment for better performance
+            const fragment = document.createDocumentFragment();
+            
+            items.forEach(item => {
+                const itemElement = document.createElement('div');
+                itemElement.className = 'menu-item rounded-lg overflow-hidden';
+                itemElement.onclick = () => showItemDetails(item);
+                itemElement.innerHTML = `
+                    <img data-src="${item.image_url}" alt="${item.name}" class="lazy-load" loading="lazy">
+                    <div class="content">
+                        <h4 class="text-xl font-semibold text-white">${item.name}</h4>
+                        <p class="text-gray-300">${item.description.substring(0, 100)}</p>
+                    </div>
+                    <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
+                `;
+                fragment.appendChild(itemElement);
+            });
+
+            menuContainer.appendChild(fragment);
         }
+        
+        // Update the current offset
+        currentOffset += items.length;
+        
+        // Check if we've loaded all items
+        hasMoreItems = items.length === itemsPerPage;
+        
+        // Set up lazy loading for new images
+        setupLazyLoading();
+        
+        // Set up intersection observer for infinite scroll
+        setupInfiniteScroll();
+        
     } catch (error) {
         console.error('Error loading menu:', error);
-        // Error handling
+        const menuContainer = document.getElementById('menuContainer');
+        if (currentOffset === 0) {
+            menuContainer.innerHTML = `
+                <div class="col-span-full text-center py-12">
+                    <p class="text-gray-300 text-lg">Failed to load menu items. Please try again later.</p>
+                    <p class="text-gray-400 text-sm mt-2">Error: ${error.message}</p>
+                </div>
+            `;
+        }
+    } finally {
+        isLoading = false;
     }
 }
 
-// New render function for category items
-function renderCategoryItems(items, container) {
-    const fragment = document.createDocumentFragment();
-    items.forEach(item => {
-        const itemHTML = `
-            <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                <img src="${item.image_url}" alt="${item.name}">
-                <div class="content">
-                    <h4 class="text-xl font-semibold text-white">${item.name}</h4>
-                    <p class="text-gray-300">${item.description.substring(0, 100)}</p>
-                </div>
-                <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
-            </div>
-        `;
-        const div = document.createElement('div');
-        div.innerHTML = itemHTML;
-        fragment.appendChild(div.firstElementChild);
+// Optimized lazy loading setup
+function setupLazyLoading() {
+    if (!imageObserver) {
+        imageObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    img.src = img.dataset.src;
+                    imageObserver.unobserve(img);
+                }
+            });
+        }, {
+            rootMargin: '50px 0px',
+            threshold: 0.1
+        });
+    }
+
+    document.querySelectorAll('.lazy-load:not([src])').forEach(img => {
+        imageObserver.observe(img);
     });
-    container.appendChild(fragment);
 }
 
-// Modified filterByCategory function with caching
+// Optimized infinite scroll setup
+function setupInfiniteScroll() {
+    if (!menuObserver) {
+        const sentinel = document.createElement('div');
+        sentinel.style.height = '1px';
+        sentinel.id = 'scroll-sentinel';
+        
+        menuObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && hasMoreItems && !isLoading) {
+                    loadMenu();
+                }
+            });
+        }, {
+            rootMargin: '100px 0px',
+            threshold: 0.1
+        });
+    }
+
+    const sentinel = document.getElementById('scroll-sentinel');
+    if (sentinel) {
+        menuObserver.observe(sentinel);
+    }
+}
+
+// Optimized category switching
 async function filterByCategory(categoryId) {
-    const menuContainer = document.getElementById('menuContainer');
+    // Reset pagination state
+    currentOffset = 0;
+    hasMoreItems = true;
+    currentCategory = categoryId;
     
-    if (categoryCache[categoryId]) {
-        menuContainer.innerHTML = categoryCache[categoryId];
-        if (categoryId !== 'all') setupScrollObserver();
+    // Check cache first
+    if (categoryCache.has(categoryId)) {
+        const menuContainer = document.getElementById('menuContainer');
+        menuContainer.innerHTML = categoryCache.get(categoryId);
+        setupLazyLoading();
         return;
     }
 
-    currentCategory = categoryId;
+    // Load new items
     await loadMenu();
     
-    // Clone and cache the rendered content
-    if (categoryId !== 'all') {
-        categoryCache[categoryId] = menuContainer.innerHTML;
+    // Cache the result if it's a complete category view
+    if (categoryId !== 'all' && !hasMoreItems) {
+        const menuContainer = document.getElementById('menuContainer');
+        categoryCache.set(categoryId, menuContainer.innerHTML);
+    }
+    
+    // Close the sidebar
+    toggleCategories();
+}
+
+// Add cleanup function
+function cleanup() {
+    if (imageObserver) {
+        imageObserver.disconnect();
+    }
+    if (menuObserver) {
+        menuObserver.disconnect();
     }
 }
 
-// Pagination functions
-function renderNextChunk() {
-    const start = currentChunkIndex * ITEMS_PER_PAGE;
-    const end = start + ITEMS_PER_PAGE;
-    const chunk = currentCategoryItems.slice(start, end);
-    
-    if (chunk.length === 0) return;
+// Add event listener for cleanup
+window.addEventListener('beforeunload', cleanup);
 
-    const fragment = document.createDocumentFragment();
-    chunk.forEach(item => {
-        const itemHTML = `
-            <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                <img src="${item.image_url}" alt="${item.name}">
-                <div class="content">
-                    <h4 class="text-xl font-semibold text-white">${item.name}</h4>
-                    <p class="text-gray-300">${item.description.substring(0, 100)}</p>
-                </div>
-                <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
-            </div>
-        `;
-        const div = document.createElement('div');
-        div.innerHTML = itemHTML;
-        fragment.appendChild(div.firstElementChild);
-    });
-
-    menuContainer.appendChild(fragment);
-    currentChunkIndex++;
-}
-
-function setupScrollObserver() {
-    if (observer) observer.disconnect();
-    
-    const sentinel = document.createElement('div');
-    sentinel.style.height = '1px';
-    menuContainer.appendChild(sentinel);
-
-    observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting && currentChunkIndex * ITEMS_PER_PAGE < currentCategoryItems.length) {
-                renderNextChunk();
-            }
-        });
-    }, { threshold: 1.0 });
-
-    observer.observe(sentinel);
-}
-
-// Modified toggleCategories function
-function toggleCategories() {
-    const sidebar = document.getElementById('categoriesSidebar');
-    const overlay = document.getElementById('blurOverlay');
-    sidebar.classList.toggle('translate-x-full');
-    overlay.classList.toggle('active');
-    document.body.style.overflow = sidebar.classList.contains('translate-x-full') ? '' : 'hidden';
-}
-
-// Initialization
-document.addEventListener('DOMContentLoaded', () => {
-    loadTheme();
-    loadCategories();
-    loadMenu();
-    loadBackgroundImage();
-});
+// ... existing code ...
 
         // Modified showAdminPanel function
         function showAdminPanel() {
@@ -1127,8 +1174,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Update sidebar categories
                 const categoriesContainer = document.getElementById('categories');
                 categoriesContainer.innerHTML = `
-                    <button onclick="filterByCategory('all')" class="w-full text-left px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-colors">
-                        All Items
+                    
                     </button>
                     ${categories.map(category => `
                         <button onclick="filterByCategory(${category.id})" class="w-full text-left px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-colors">
@@ -1620,6 +1666,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Add the handleLogoClick function
         function handleLogoClick() {
             currentCategory = 'all';
+            currentOffset = 0;
+            hasMoreItems = true;
             loadMenu();
         }
 
