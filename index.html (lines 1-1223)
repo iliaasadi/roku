@@ -1,0 +1,89 @@
+// Modify the loadMenu function
+async function loadMenu() {
+    try {
+        const response = await fetch(`/api/items?offset=${currentOffset}&limit=${itemsPerPage}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const items = await response.json();
+        
+        if (!Array.isArray(items)) {
+            throw new Error('Invalid response format from API');
+        }
+
+        const menuContainer = document.getElementById('menuContainer');
+
+        // If it's the first load, clear the container
+        if (currentOffset === 0) {
+            menuContainer.innerHTML = '';
+        }
+
+        // Append new items to the menu
+        items.forEach(item => {
+            const itemElement = document.createElement('div');
+            itemElement.className = 'menu-item rounded-lg overflow-hidden';
+            itemElement.onclick = () => showItemDetails(item);
+            itemElement.innerHTML = `
+                <img data-src="${item.image_url}" alt="${item.name}" class="lazy-load" style="opacity: 0;">
+                <div class="content">
+                    <h4 class="text-xl font-semibold text-white">${item.name}</h4>
+                    <p class="text-gray-300">${item.description.substring(0, 100)}</p>
+                </div>
+                <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
+            `;
+            menuContainer.appendChild(itemElement);
+        });
+
+        // Update the current offset
+        currentOffset += items.length;
+
+        // If fewer items were returned than requested, hide the load more button
+        if (items.length < itemsPerPage) {
+            // Optionally, you can hide a "Load More" button if you implement one
+        }
+
+        // Set up lazy loading for images
+        setupLazyLoading();
+    } catch (error) {
+        console.error('Error loading menu:', error);
+        const menuContainer = document.getElementById('menuContainer');
+        menuContainer.innerHTML = `
+            <div class="col-span-full text-center py-12">
+                <p class="text-gray-300 text-lg">Failed to load menu items. Please try again later.</p>
+                <p class="text-gray-400 text-sm mt-2">Error: ${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+// Function to set up lazy loading for images
+function setupLazyLoading() {
+    const lazyImages = document.querySelectorAll('.lazy-load');
+    const imageObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                img.src = img.dataset.src; // Set the src to the data-src value
+                img.onload = () => {
+                    img.style.opacity = 1; // Fade in the image
+                };
+                observer.unobserve(img); // Stop observing the image
+            }
+        });
+    });
+
+    lazyImages.forEach(image => {
+        imageObserver.observe(image); // Start observing each lazy-load image
+    });
+}
+
+// Add a scroll event listener to load more items
+document.getElementById('menuContainer').addEventListener('scroll', () => {
+    const menuContainer = document.getElementById('menuContainer');
+    if (menuContainer.scrollTop + menuContainer.clientHeight >= menuContainer.scrollHeight) {
+        loadMenu(); // Load more items when scrolled to the bottom
+    }
+});
+
+// Call loadMenu initially
+loadMenu();

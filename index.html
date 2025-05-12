@@ -737,6 +737,7 @@
         // Sample menu items with more details
         let menuItems = [];
         let currentCategory = 'all';
+        
 
         // Categories management
         let categories = [];
@@ -747,75 +748,179 @@
         // Theme management
         let isDarkMode = true;
 
-        // Add these variables at the top of your script
-        let currentOffset = 0; // Track the current offset for lazy loading
-        const itemsPerPage = 10; // Number of items to load per request
+   
+// Add these variables at the top
+let observer;
+let currentChunkIndex = 0;
+const ITEMS_PER_PAGE = 10;
+let currentCategoryItems = [];
+let categoryCache = {};
 
-        // Modify the loadMenu function
-        async function loadMenu() {
-            try {
-                const response = await fetch(`/api/items?offset=${currentOffset}&limit=${itemsPerPage}`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+// Modified loadMenu function with lazy loading
+async function loadMenu() {
+    try {
+        const response = await fetch('/api/items');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const items = await response.json();
+        
+        const menuContainer = document.getElementById('menuContainer');
+        menuContainer.innerHTML = '';
+        
+        if (currentCategory === 'all') {
+            // Group items by category for 'all' view
+            const itemsByCategory = items.reduce((acc, item) => {
+                if (!acc[item.category_id]) {
+                    acc[item.category_id] = {
+                        name: item.category_name,
+                        items: []
+                    };
                 }
-                const items = await response.json();
-                
-                if (!Array.isArray(items)) {
-                    throw new Error('Invalid response format from API');
-                }
+                acc[item.category_id].items.push(item);
+                return acc;
+            }, {});
 
-                const menuContainer = document.getElementById('menuContainer');
-
-                // If it's the first load, clear the container
-                if (currentOffset === 0) {
-                    menuContainer.innerHTML = '';
-                }
-
-                // Append new items to the menu
-                items.forEach(item => {
-                    const itemElement = document.createElement('div');
-                    itemElement.className = 'menu-item rounded-lg overflow-hidden';
-                    itemElement.onclick = () => showItemDetails(item);
-                    itemElement.innerHTML = `
-                        <img src="${item.image_url}" alt="${item.name}">
-                        <div class="content">
-                            <h4 class="text-xl font-semibold text-white">${item.name}</h4>
-                            <p class="text-gray-300">${item.description.substring(0, 100)}</p>
-                        </div>
-                        <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
-                    `;
-                    menuContainer.appendChild(itemElement);
-                });
-
-                // Update the current offset
-                currentOffset += items.length;
-
-                // If fewer items were returned than requested, hide the load more button
-                if (items.length < itemsPerPage) {
-                    // Optionally, you can hide a "Load More" button if you implement one
-                }
-            } catch (error) {
-                console.error('Error loading menu:', error);
-                const menuContainer = document.getElementById('menuContainer');
-                menuContainer.innerHTML = `
-                    <div class="col-span-full text-center py-12">
-                        <p class="text-gray-300 text-lg">Failed to load menu items. Please try again later.</p>
-                        <p class="text-gray-400 text-sm mt-2">Error: ${error.message}</p>
-                    </div>
+            // Render category sections with placeholders
+            Object.values(itemsByCategory).forEach(category => {
+                const categorySection = document.createElement('div');
+                categorySection.className = 'category-section';
+                categorySection.innerHTML = `
+                    <h3 class="text-3xl font-bold text-white mb-6 mt-8">${category.name}</h3>
+                    <div class="grid grid-cols-1 gap-2" data-category-id="${category.id}"></div>
                 `;
-            }
-        }
+                menuContainer.appendChild(categorySection);
+            });
 
-        // Add a scroll event listener to load more items
-        document.getElementById('menuContainer').addEventListener('scroll', () => {
-            const menuContainer = document.getElementById('menuContainer');
-            if (menuContainer.scrollTop + menuContainer.clientHeight >= menuContainer.scrollHeight) {
-                loadMenu(); // Load more items when scrolled to the bottom
+            // Set up intersection observers for each category
+            document.querySelectorAll('.category-section').forEach(section => {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const categoryId = entry.target.querySelector('div').dataset.categoryId;
+                            const categoryItems = items.filter(item => item.category_id === categoryId);
+                            renderCategoryItems(categoryItems, entry.target.querySelector('div'));
+                            observer.unobserve(entry.target);
+                        }
+                    });
+                }, { rootMargin: '100px' });
+                
+                observer.observe(section);
+            });
+        } else {
+            // Handle individual category with pagination
+            currentCategoryItems = items.filter(item => item.category_id === parseInt(currentCategory));
+            currentChunkIndex = 0;
+            renderNextChunk();
+            setupScrollObserver();
+        }
+    } catch (error) {
+        console.error('Error loading menu:', error);
+        // Error handling
+    }
+}
+
+// New render function for category items
+function renderCategoryItems(items, container) {
+    const fragment = document.createDocumentFragment();
+    items.forEach(item => {
+        const itemHTML = `
+            <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                <img src="${item.image_url}" alt="${item.name}">
+                <div class="content">
+                    <h4 class="text-xl font-semibold text-white">${item.name}</h4>
+                    <p class="text-gray-300">${item.description.substring(0, 100)}</p>
+                </div>
+                <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
+            </div>
+        `;
+        const div = document.createElement('div');
+        div.innerHTML = itemHTML;
+        fragment.appendChild(div.firstElementChild);
+    });
+    container.appendChild(fragment);
+}
+
+// Modified filterByCategory function with caching
+async function filterByCategory(categoryId) {
+    const menuContainer = document.getElementById('menuContainer');
+    
+    if (categoryCache[categoryId]) {
+        menuContainer.innerHTML = categoryCache[categoryId];
+        if (categoryId !== 'all') setupScrollObserver();
+        return;
+    }
+
+    currentCategory = categoryId;
+    await loadMenu();
+    
+    // Clone and cache the rendered content
+    if (categoryId !== 'all') {
+        categoryCache[categoryId] = menuContainer.innerHTML;
+    }
+}
+
+// Pagination functions
+function renderNextChunk() {
+    const start = currentChunkIndex * ITEMS_PER_PAGE;
+    const end = start + ITEMS_PER_PAGE;
+    const chunk = currentCategoryItems.slice(start, end);
+    
+    if (chunk.length === 0) return;
+
+    const fragment = document.createDocumentFragment();
+    chunk.forEach(item => {
+        const itemHTML = `
+            <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                <img src="${item.image_url}" alt="${item.name}">
+                <div class="content">
+                    <h4 class="text-xl font-semibold text-white">${item.name}</h4>
+                    <p class="text-gray-300">${item.description.substring(0, 100)}</p>
+                </div>
+                <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
+            </div>
+        `;
+        const div = document.createElement('div');
+        div.innerHTML = itemHTML;
+        fragment.appendChild(div.firstElementChild);
+    });
+
+    menuContainer.appendChild(fragment);
+    currentChunkIndex++;
+}
+
+function setupScrollObserver() {
+    if (observer) observer.disconnect();
+    
+    const sentinel = document.createElement('div');
+    sentinel.style.height = '1px';
+    menuContainer.appendChild(sentinel);
+
+    observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && currentChunkIndex * ITEMS_PER_PAGE < currentCategoryItems.length) {
+                renderNextChunk();
             }
         });
+    }, { threshold: 1.0 });
 
-        // Call loadMenu initially
-        loadMenu();
+    observer.observe(sentinel);
+}
+
+// Modified toggleCategories function
+function toggleCategories() {
+    const sidebar = document.getElementById('categoriesSidebar');
+    const overlay = document.getElementById('blurOverlay');
+    sidebar.classList.toggle('translate-x-full');
+    overlay.classList.toggle('active');
+    document.body.style.overflow = sidebar.classList.contains('translate-x-full') ? '' : 'hidden';
+}
+
+// Initialization
+document.addEventListener('DOMContentLoaded', () => {
+    loadTheme();
+    loadCategories();
+    loadMenu();
+    loadBackgroundImage();
+});
 
         // Modified showAdminPanel function
         function showAdminPanel() {
