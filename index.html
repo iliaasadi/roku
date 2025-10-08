@@ -176,6 +176,7 @@
             padding: 1rem 0;
             margin-bottom: 2rem;
             transition: all 0.3s;
+            will-change: transform, opacity;
         }
         .category-nav.light-mode {
             background: rgba(255, 255, 255, 0.8);
@@ -402,7 +403,8 @@
             backdrop-filter: blur(4px);
             opacity: 0;
             visibility: hidden;
-            transition: all 0.3s ease-in-out;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+            will-change: opacity, visibility;
             z-index: 30;
         }
         .blur-overlay.active {
@@ -413,6 +415,12 @@
             box-shadow: -4px 0 15px rgba(0, 0, 0, 0.3);
             display: flex;
             flex-direction: column;
+            will-change: transform;
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #categoriesSidebar.show {
+            transform: translateX(0);
         }
         #categoriesSidebar .p-4 {
             display: flex;
@@ -495,6 +503,7 @@
             object-fit: contain; /* Ensure the image is fully visible */
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lazysizes/5.3.2/lazysizes.min.js" async></script>
 </head>
 <body>
     <div class="blur-overlay" id="blurOverlay" onclick="toggleCategories()"></div>
@@ -504,9 +513,9 @@
                 <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                     <div class="flex items-center gap-4">
                         <div class="w-16 h-16 rounded-full overflow-hidden cursor-pointer transition-transform hover:scale-110" onclick="handleLogoClick()">
-                            <img src="logo.jpg" 
+                            <img data-src="logo.jpg" 
                                  alt="ROKU Logo" 
-                                 class="w-full h-full object-cover">
+                                 class="lazyload w-full h-full object-cover">
                         </div>
                         <h1 class="text-4xl font-bold text-white">ROKU</h1>
                     </div>
@@ -605,7 +614,7 @@
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
-                    <img id="itemDetailImage" src="" alt="" class="w-full h-auto object-cover rounded-lg mb-4">
+                    <img id="itemDetailImage" data-src="" alt="" class="lazyload w-full h-auto object-cover rounded-lg mb-4">
                     <p id="itemDetailDescription" class="text-gray-300 text-lg"></p>
                 </div>
                 <div>
@@ -814,20 +823,10 @@ async function loadMenu() {
                             </svg>
                         </button>
                     </div>
-                    <div class="grid grid-cols-1 gap-2">
-                        ${category.items.slice(0, 3).map(item => `
-                            <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                                <img data-src="${item.image_url}" alt="${item.name}" class="lazy-load" loading="lazy">
-                                <div class="content">
-                                    <h4 class="text-xl font-semibold text-white">${item.name}</h4>
-                                    <p class="text-gray-300">${item.description.substring(0, 100)}</p>
-                                </div>
-                                <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
-                            </div>
-                        `).join('')}
-                    </div>
+                    
                 `;
                 menuContainer.appendChild(categorySection);
+                
             });
         } else {
             // Create a document fragment for better performance
@@ -838,7 +837,7 @@ async function loadMenu() {
                 itemElement.className = 'menu-item rounded-lg overflow-hidden';
                 itemElement.onclick = () => showItemDetails(item);
                 itemElement.innerHTML = `
-                    <img data-src="${item.image_url}" alt="${item.name}" class="lazy-load" loading="lazy">
+                    <img data-src="${item.image_url}" alt="${item.name}" class="lazyload" loading="lazy">
                     <div class="content">
                         <h4 class="text-xl font-semibold text-white">${item.name}</h4>
                         <p class="text-gray-300">${item.description.substring(0, 100)}</p>
@@ -851,14 +850,12 @@ async function loadMenu() {
             menuContainer.appendChild(fragment);
         }
         
+
         // Update the current offset
         currentOffset += items.length;
         
         // Check if we've loaded all items
         hasMoreItems = items.length === itemsPerPage;
-        
-        // Set up lazy loading for new images
-        setupLazyLoading();
         
         // Set up intersection observer for infinite scroll
         setupInfiniteScroll();
@@ -877,28 +874,6 @@ async function loadMenu() {
     } finally {
         isLoading = false;
     }
-}
-
-// Optimized lazy loading setup
-function setupLazyLoading() {
-    if (!imageObserver) {
-        imageObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const img = entry.target;
-                    img.src = img.dataset.src;
-                    imageObserver.unobserve(img);
-                }
-            });
-        }, {
-            rootMargin: '50px 0px',
-            threshold: 0.1
-        });
-    }
-
-    document.querySelectorAll('.lazy-load:not([src])').forEach(img => {
-        imageObserver.observe(img);
-    });
 }
 
 // Optimized infinite scroll setup
@@ -928,30 +903,76 @@ function setupInfiniteScroll() {
 
 // Optimized category switching
 async function filterByCategory(categoryId) {
-    // Reset pagination state
-    currentOffset = 0;
-    hasMoreItems = true;
-    currentCategory = categoryId;
-    
-    // Check cache first
-    if (categoryCache.has(categoryId)) {
+    try {
+        // Show loading state
         const menuContainer = document.getElementById('menuContainer');
-        menuContainer.innerHTML = categoryCache.get(categoryId);
-        setupLazyLoading();
-        return;
-    }
+        menuContainer.innerHTML = `
+            <div class="col-span-full text-center py-12">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
+                <p class="text-gray-300 text-lg mt-4">Loading menu items...</p>
+            </div>
+        `;
 
-    // Load new items
-    await loadMenu();
-    
-    // Cache the result if it's a complete category view
-    if (categoryId !== 'all' && !hasMoreItems) {
+        // Reset pagination state
+        currentOffset = 0;
+        hasMoreItems = true;
+        currentCategory = categoryId;
+
+        // Fetch items for the specific category
+        const response = await fetch(`/api/items?category=${categoryId}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const items = await response.json();
+
+        if (!Array.isArray(items)) {
+            throw new Error('Invalid response format from API');
+        }
+
+        // Clear the container
+        menuContainer.innerHTML = '';
+
+        if (items.length > 0) {
+            // Get category name from the first item
+            const categoryName = items[0].category_name;
+            
+            menuContainer.innerHTML = `
+                <div class="col-span-full">
+                    <h3 class="text-3xl font-bold text-white mb-6">${categoryName}</h3>
+                    <div class="grid grid-cols-1 gap-2">
+                        ${items.map(item => `
+                            <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                                <img data-src="${item.image_url}" alt="${item.name}" class="lazyload" loading="lazy">
+                                <div class="content">
+                                    <h4 class="text-xl font-semibold text-white">${item.name}</h4>
+                                    <p class="text-gray-300">${item.description ? item.description.substring(0, 100) : ''}</p>
+                                </div>
+                                <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        } else {
+            menuContainer.innerHTML = `
+                <div class="col-span-full text-center py-12">
+                    <p class="text-gray-300 text-lg">No items found in this category.</p>
+                </div>
+            `;
+        }
+
+        // Close the sidebar
+        toggleCategories();
+    } catch (error) {
+        console.error('Error filtering items:', error);
         const menuContainer = document.getElementById('menuContainer');
-        categoryCache.set(categoryId, menuContainer.innerHTML);
+        menuContainer.innerHTML = `
+            <div class="col-span-full text-center py-12">
+                <p class="text-gray-300 text-lg">Failed to load menu items. Please try again later.</p>
+                <p class="text-gray-400 text-sm mt-2">Error: ${error.message}</p>
+            </div>
+        `;
     }
-    
-    // Close the sidebar
-    toggleCategories();
 }
 
 // Add cleanup function
@@ -1131,7 +1152,8 @@ window.addEventListener('beforeunload', cleanup);
 
             // Set the item details
             itemDetailTitle.textContent = item.name;
-            itemDetailImage.src = item.image_url;
+            itemDetailImage.setAttribute('data-src', item.image_url);
+            itemDetailImage.classList.add('lazyload');
             itemDetailDescription.textContent = item.description;
             itemDetailCategory.textContent = item.category_name; // Assuming category_name is available
             itemDetailPrice.textContent = `${item.price.toLocaleString()} تومان`;
@@ -1174,7 +1196,8 @@ window.addEventListener('beforeunload', cleanup);
                 // Update sidebar categories
                 const categoriesContainer = document.getElementById('categories');
                 categoriesContainer.innerHTML = `
-                    
+                    <button onclick="filterByCategory('all')" class="w-full text-left px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-colors">
+                        All Items
                     </button>
                     ${categories.map(category => `
                         <button onclick="filterByCategory(${category.id})" class="w-full text-left px-4 py-2 rounded-lg text-white hover:bg-white/10 transition-colors">
@@ -1185,32 +1208,36 @@ window.addEventListener('beforeunload', cleanup);
 
                 // Update admin panel category select
                 const categorySelect = document.getElementById('category');
-                categorySelect.innerHTML = `
-                    <option value="">Select a category</option>
-                    ${categories.map(category => `
-                        <option value="${category.id}">${category.name}</option>
-                    `).join('')}
-                `;
+                if (categorySelect) {
+                    categorySelect.innerHTML = `
+                        <option value="">Select a category</option>
+                        ${categories.map(category => `
+                            <option value="${category.id}">${category.name}</option>
+                        `).join('')}
+                    `;
+                }
 
                 // Update admin panel categories list
                 const categoriesList = document.getElementById('categoriesList');
-                categoriesList.innerHTML = categories.map(category => `
-                    <div class="flex justify-between items-center p-2 bg-white/5 rounded">
-                        <span class="text-white">${category.name}</span>
-                        <div class="flex gap-2">
-                            <button onclick="editCategory(${category.id}, '${category.name}')" class="text-blue-400 hover:text-blue-300">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                </svg>
-                            </button>
-                            <button onclick="deleteCategory(${category.id})" class="text-red-400 hover:text-red-300">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                </svg>
-                            </button>
+                if (categoriesList) {
+                    categoriesList.innerHTML = categories.map(category => `
+                        <div class="flex justify-between items-center p-2 bg-white/5 rounded">
+                            <span class="text-white">${category.name}</span>
+                            <div class="flex gap-2">
+                                <button onclick="editCategory(${category.id}, '${category.name}')" class="text-blue-400 hover:text-blue-300">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                </button>
+                                <button onclick="deleteCategory(${category.id})" class="text-red-400 hover:text-red-300">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                `).join('');
+                    `).join('');
+                }
             } catch (error) {
                 console.error('Error loading categories:', error);
                 const categoriesContainer = document.getElementById('categories');
@@ -1332,7 +1359,7 @@ window.addEventListener('beforeunload', cleanup);
                             <div class="grid grid-cols-1 gap-2">
                                 ${items.map(item => `
                                     <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                                        <img src="${item.image_url}" alt="${item.name}">
+                                        <img data-src="${item.image_url}" alt="${item.name}" class="lazyload">
                                         <div class="content">
                                             <h4 class="text-xl font-semibold text-white">${item.name}</h4>
                                             <p class="text-gray-300">${item.description.substring(0, 100)}</p>
@@ -1370,7 +1397,7 @@ window.addEventListener('beforeunload', cleanup);
                                     <div class="grid grid-cols-1 gap-2">
                                         ${filteredItems.map(item => `
                                             <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                                                <img src="${item.image_url}" alt="${item.name}">
+                                                <img data-src="${item.image_url}" alt="${item.name}" class="lazyload">
                                                 <div class="content">
                                                     <h4 class="text-xl font-semibold text-white">${item.name}</h4>
                                                     <p class="text-gray-300">${item.description.substring(0, 100)}</p>
@@ -1656,11 +1683,23 @@ window.addEventListener('beforeunload', cleanup);
         function toggleCategories() {
             const sidebar = document.getElementById('categoriesSidebar');
             const overlay = document.getElementById('blurOverlay');
-            sidebar.classList.toggle('translate-x-full');
-            overlay.classList.toggle('active');
             
-            // Prevent body scrolling when sidebar is open
-            document.body.style.overflow = sidebar.classList.contains('translate-x-full') ? '' : 'hidden';
+            // Use requestAnimationFrame for smoother animations
+            requestAnimationFrame(() => {
+                const isOpen = !sidebar.classList.contains('show');
+                
+                // Toggle classes
+                sidebar.classList.toggle('show');
+                overlay.classList.toggle('active');
+                
+                // Handle body scroll
+                document.body.style.overflow = isOpen ? 'hidden' : '';
+                
+                // Preload categories if opening
+                if (isOpen) {
+                    loadCategories();
+                }
+            });
         }
 
         // Add the handleLogoClick function
@@ -1735,6 +1774,28 @@ window.addEventListener('beforeunload', cleanup);
             } catch (error) {
                 console.error('Error saving item:', error);
                 alert('Failed to save item: ' + error.message);
+            }
+        });
+
+        // Add event listener for escape key to close sidebar
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const sidebar = document.getElementById('categoriesSidebar');
+                if (sidebar.classList.contains('show')) {
+                    toggleCategories();
+                }
+            }
+        });
+
+        // Add click outside handler
+        document.addEventListener('click', (e) => {
+            const sidebar = document.getElementById('categoriesSidebar');
+            const menuToggle = document.querySelector('.menu-toggle');
+            
+            if (sidebar.classList.contains('show') && 
+                !sidebar.contains(e.target) && 
+                !menuToggle.contains(e.target)) {
+                toggleCategories();
             }
         });
     </script>

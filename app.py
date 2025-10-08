@@ -3,12 +3,50 @@ from models import db, Category, MenuItem, WallpaperSettings
 from config import SQLALCHEMY_DATABASE_URI, SECRET_KEY
 import os
 from datetime import datetime
+from PIL import Image
+import io
+import base64
 
 app = Flask(__name__, static_folder='.')
 app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = SECRET_KEY
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 db.init_app(app)
+
+def compress_image(image_data, max_size_kb=50):
+    """Compress image to specified size in KB while maintaining quality"""
+    # Convert base64 to image
+    if isinstance(image_data, str) and image_data.startswith('data:image'):
+        # Remove data URL prefix
+        image_data = image_data.split(',')[1]
+    
+    image_bytes = base64.b64decode(image_data)
+    img = Image.open(io.BytesIO(image_bytes))
+    
+    # Convert to RGB if necessary
+    if img.mode in ('RGBA', 'P'):
+        img = img.convert('RGB')
+    
+    # Calculate initial quality
+    quality = 95
+    output = io.BytesIO()
+    
+    # Compress image with reducing quality until size is under max_size_kb
+    while True:
+        output.seek(0)
+        output.truncate()
+        img.save(output, format='JPEG', quality=quality, optimize=True)
+        size_kb = len(output.getvalue()) / 1024
+        
+        if size_kb <= max_size_kb or quality <= 5:
+            break
+            
+        quality -= 5
+    
+    # Convert back to base64
+    compressed_base64 = base64.b64encode(output.getvalue()).decode('utf-8')
+    return f"data:image/jpeg;base64,{compressed_base64}"
 
 # Create database tables
 with app.app_context():
@@ -103,6 +141,10 @@ def create_item():
     if not data or not all(k in data for k in ['name', 'description', 'price', 'category_id']):
         return jsonify({'error': 'Missing required fields'}), 400
     
+    # Compress image if provided
+    if 'image_url' in data and data['image_url']:
+        data['image_url'] = compress_image(data['image_url'])
+    
     item = MenuItem(
         name=data['name'],
         description=data['description'],
@@ -132,8 +174,8 @@ def update_item(item_id):
         item.description = data['description']
     if 'price' in data:
         item.price = data['price']
-    if 'image_url' in data:
-        item.image_url = data['image_url']
+    if 'image_url' in data and data['image_url']:
+        item.image_url = compress_image(data['image_url'])
     if 'category_id' in data:
         item.category_id = data['category_id']
     
@@ -162,15 +204,18 @@ def update_wallpaper():
     if not data or 'background_image' not in data:
         return jsonify({'error': 'Background image URL is required'}), 400
     
+    # Compress background image
+    compressed_image = compress_image(data['background_image'])
+    
     wallpaper = WallpaperSettings.query.first()
     if not wallpaper:
-        wallpaper = WallpaperSettings(background_image=data['background_image'])
+        wallpaper = WallpaperSettings(background_image=compressed_image)
         db.session.add(wallpaper)
     else:
-        wallpaper.background_image = data['background_image']
+        wallpaper.background_image = compressed_image
     
     db.session.commit()
     return jsonify(wallpaper.to_dict())
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000, debug=True) 
+    app.run(host='0.0.0.0', port=80, debug=True) 
