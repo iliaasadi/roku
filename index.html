@@ -836,8 +836,13 @@ async function loadMenu() {
                 const itemElement = document.createElement('div');
                 itemElement.className = 'menu-item rounded-lg overflow-hidden';
                 itemElement.onclick = () => showItemDetails(item);
+                // Handle both old base64 data URLs and new file paths
+                const imageUrl = item.image_url && item.image_url.startsWith('data:') ? 
+                    item.image_url : 
+                    (item.image_url ? `/${item.image_url}` : 'logo.jpg');
+                
                 itemElement.innerHTML = `
-                    <img data-src="${item.image_url}" alt="${item.name}" class="lazyload" loading="lazy">
+                    <img data-src="${imageUrl}" alt="${item.name}" class="lazyload" loading="lazy">
                     <div class="content">
                         <h4 class="text-xl font-semibold text-white">${item.name}</h4>
                         <p class="text-gray-300">${item.description.substring(0, 100)}</p>
@@ -940,16 +945,23 @@ async function filterByCategory(categoryId) {
                 <div class="col-span-full">
                     <h3 class="text-3xl font-bold text-white mb-6">${categoryName}</h3>
                     <div class="grid grid-cols-1 gap-2">
-                        ${items.map(item => `
+                        ${items.map(item => {
+                            // Handle both old base64 data URLs and new file paths
+                            const imageUrl = item.image_url && item.image_url.startsWith('data:') ? 
+                                item.image_url : 
+                                (item.image_url ? `/${item.image_url}` : 'logo.jpg');
+                            
+                            return `
                             <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                                <img data-src="${item.image_url}" alt="${item.name}" class="lazyload" loading="lazy">
+                                <img data-src="${imageUrl}" alt="${item.name}" class="lazyload" loading="lazy">
                                 <div class="content">
                                     <h4 class="text-xl font-semibold text-white">${item.name}</h4>
                                     <p class="text-gray-300">${item.description ? item.description.substring(0, 100) : ''}</p>
                                 </div>
                                 <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
                             </div>
-                        `).join('')}
+                        `;
+                        }).join('')}
                     </div>
                 </div>
             `;
@@ -1152,7 +1164,13 @@ window.addEventListener('beforeunload', cleanup);
 
             // Set the item details
             itemDetailTitle.textContent = item.name;
-            itemDetailImage.setAttribute('data-src', item.image_url);
+            
+            // Handle both old base64 data URLs and new file paths
+            const imageUrl = item.image_url && item.image_url.startsWith('data:') ? 
+                item.image_url : 
+                (item.image_url ? `/${item.image_url}` : 'logo.jpg');
+            
+            itemDetailImage.setAttribute('data-src', imageUrl);
             itemDetailImage.classList.add('lazyload');
             itemDetailDescription.textContent = item.description;
             itemDetailCategory.textContent = item.category_name; // Assuming category_name is available
@@ -1357,16 +1375,23 @@ window.addEventListener('beforeunload', cleanup);
                         categorySection.innerHTML = `
                             <h3 class="text-3xl font-bold text-white mb-6 mt-8">${category}</h3>
                             <div class="grid grid-cols-1 gap-2">
-                                ${items.map(item => `
+                                ${items.map(item => {
+                                    // Handle both old base64 data URLs and new file paths
+                                    const imageUrl = item.image_url && item.image_url.startsWith('data:') ? 
+                                        item.image_url : 
+                                        (item.image_url ? `/${item.image_url}` : 'logo.jpg');
+                                    
+                                    return `
                                     <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                                        <img data-src="${item.image_url}" alt="${item.name}" class="lazyload">
+                                        <img data-src="${imageUrl}" alt="${item.name}" class="lazyload">
                                         <div class="content">
                                             <h4 class="text-xl font-semibold text-white">${item.name}</h4>
                                             <p class="text-gray-300">${item.description.substring(0, 100)}</p>
                                         </div>
                                         <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
                                     </div>
-                                `).join('')}
+                                `;
+                                }).join('')}
                             </div>
                         `;
                         menuContainer.appendChild(categorySection);
@@ -1395,16 +1420,23 @@ window.addEventListener('beforeunload', cleanup);
                                 <div class="col-span-full">
                                     <h3 class="text-3xl font-bold text-white mb-6">${category.name}</h3>
                                     <div class="grid grid-cols-1 gap-2">
-                                        ${filteredItems.map(item => `
+                                        ${filteredItems.map(item => {
+                                            // Handle both old base64 data URLs and new file paths
+                                            const imageUrl = item.image_url && item.image_url.startsWith('data:') ? 
+                                                item.image_url : 
+                                                (item.image_url ? `/${item.image_url}` : 'logo.jpg');
+                                            
+                                            return `
                                             <div class="menu-item rounded-lg overflow-hidden" onclick="showItemDetails(${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                                                <img data-src="${item.image_url}" alt="${item.name}" class="lazyload">
+                                                <img data-src="${imageUrl}" alt="${item.name}" class="lazyload">
                                                 <div class="content">
                                                     <h4 class="text-xl font-semibold text-white">${item.name}</h4>
                                                     <p class="text-gray-300">${item.description.substring(0, 100)}</p>
                                                 </div>
                                                 <p class="text-lg font-semibold text-white price">${item.price.toLocaleString()} تومان</p>
                                             </div>
-                                        `).join('')}
+                                        `;
+                                        }).join('')}
                                     </div>
                                 </div>
                             `;
@@ -1657,7 +1689,11 @@ window.addEventListener('beforeunload', cleanup);
                 const data = await response.json();
                 
                 if (data.background_image) {
-                    document.body.style.backgroundImage = `url('${data.background_image}')`;
+                    // Handle both old base64 data URLs and new file paths
+                    const imageUrl = data.background_image.startsWith('data:') ? 
+                        data.background_image : 
+                        `/${data.background_image}`;
+                    document.body.style.backgroundImage = `url('${imageUrl}')`;
                     document.getElementById('backgroundImageUrl').value = data.background_image;
                     document.getElementById('backgroundImageButtonText').textContent = 'Current Background';
                 }

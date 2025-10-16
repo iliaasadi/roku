@@ -6,6 +6,8 @@ from datetime import datetime
 from PIL import Image
 import io
 import base64
+import uuid
+import shutil
 
 app = Flask(__name__, static_folder='.')
 app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
@@ -13,6 +15,39 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = SECRET_KEY
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 db.init_app(app)
+
+def save_image_to_file(image_data, upload_folder='static/uploads'):
+    """Save base64 image data to file and return the file path"""
+    try:
+        # Ensure upload directory exists
+        os.makedirs(upload_folder, exist_ok=True)
+        
+        # Convert base64 to image
+        if isinstance(image_data, str) and image_data.startswith('data:image'):
+            # Remove data URL prefix
+            image_data = image_data.split(',')[1]
+        
+        image_bytes = base64.b64decode(image_data)
+        img = Image.open(io.BytesIO(image_bytes))
+        
+        # Convert to RGB if necessary
+        if img.mode in ('RGBA', 'P'):
+            img = img.convert('RGB')
+        
+        # Generate unique filename
+        filename = f"{uuid.uuid4()}.jpg"
+        file_path = os.path.join(upload_folder, filename)
+        
+        # Compress and save image
+        quality = 85
+        img.save(file_path, format='JPEG', quality=quality, optimize=True)
+        
+        # Return relative path for database storage
+        return f"static/uploads/{filename}"
+    except Exception as e:
+        print(f"Error saving image: {e}")
+        # Return None or a default image path if there's an error
+        return None
 
 def compress_image(image_data, max_size_kb=50):
     """Compress image to specified size in KB while maintaining quality"""
@@ -60,6 +95,11 @@ with app.app_context():
 @app.route('/')
 def serve_index():
     return send_from_directory('.', 'index.html')
+
+@app.route('/static/<path:filename>')
+def serve_static_files(filename):
+    """Serve static files from the static directory"""
+    return send_from_directory('static', filename)
 
 @app.route('/<path:path>')
 def serve_static(path):
@@ -141,15 +181,16 @@ def create_item():
     if not data or not all(k in data for k in ['name', 'description', 'price', 'category_id']):
         return jsonify({'error': 'Missing required fields'}), 400
     
-    # Compress image if provided
+    # Save image to file if provided
+    image_path = None
     if 'image_url' in data and data['image_url']:
-        data['image_url'] = compress_image(data['image_url'])
+        image_path = save_image_to_file(data['image_url'])
     
     item = MenuItem(
         name=data['name'],
         description=data['description'],
         price=data['price'],
-        image_url=data.get('image_url'),
+        image_url=image_path,
         category_id=data['category_id']
     )
     db.session.add(item)
@@ -175,7 +216,15 @@ def update_item(item_id):
     if 'price' in data:
         item.price = data['price']
     if 'image_url' in data and data['image_url']:
-        item.image_url = compress_image(data['image_url'])
+        # Delete old image file if it exists
+        if item.image_url and os.path.exists(item.image_url):
+            try:
+                os.remove(item.image_url)
+            except OSError:
+                pass  # File might not exist or be accessible
+        
+        # Save new image
+        item.image_url = save_image_to_file(data['image_url'])
     if 'category_id' in data:
         item.category_id = data['category_id']
     
@@ -185,6 +234,14 @@ def update_item(item_id):
 @app.route('/api/items/<int:item_id>', methods=['DELETE'])
 def delete_item(item_id):
     item = MenuItem.query.get_or_404(item_id)
+    
+    # Delete associated image file if it exists
+    if item.image_url and os.path.exists(item.image_url):
+        try:
+            os.remove(item.image_url)
+        except OSError:
+            pass  # File might not exist or be accessible
+    
     db.session.delete(item)
     db.session.commit()
     return '', 204
@@ -204,15 +261,22 @@ def update_wallpaper():
     if not data or 'background_image' not in data:
         return jsonify({'error': 'Background image URL is required'}), 400
     
-    # Compress background image
-    compressed_image = compress_image(data['background_image'])
+    # Save background image to file
+    image_path = save_image_to_file(data['background_image'])
     
     wallpaper = WallpaperSettings.query.first()
     if not wallpaper:
-        wallpaper = WallpaperSettings(background_image=compressed_image)
+        wallpaper = WallpaperSettings(background_image=image_path)
         db.session.add(wallpaper)
     else:
-        wallpaper.background_image = compressed_image
+        # Delete old wallpaper file if it exists
+        if wallpaper.background_image and os.path.exists(wallpaper.background_image):
+            try:
+                os.remove(wallpaper.background_image)
+            except OSError:
+                pass  # File might not exist or be accessible
+        
+        wallpaper.background_image = image_path
     
     db.session.commit()
     return jsonify(wallpaper.to_dict())
