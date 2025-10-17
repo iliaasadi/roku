@@ -16,6 +16,28 @@ app.config['SECRET_KEY'] = SECRET_KEY
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 db.init_app(app)
 
+def get_default_image_path() -> str:
+    """Ensure a default image exists in static/uploads and return its relative path."""
+    uploads_dir = os.path.join('static', 'uploads')
+    os.makedirs(uploads_dir, exist_ok=True)
+    default_rel = os.path.join('static', 'uploads', 'default_logo.jpg')
+    default_abs = os.path.join(uploads_dir, 'default_logo.jpg')
+    source_logo = 'logo.jpg'
+
+    try:
+        if not os.path.exists(default_abs):
+            with Image.open(source_logo) as img:
+                if img.mode in ('RGBA', 'P'):
+                    img = img.convert('RGB')
+                else:
+                    img = img.convert('RGB')
+                img.save(default_abs, format='JPEG', quality=85, optimize=True)
+    except Exception:
+        # If anything goes wrong, fall back to original logo path being served from root
+        return source_logo
+
+    return default_rel
+
 def save_image_to_file(image_data, upload_folder='static/uploads'):
     """Save base64 image data to file and return the file path"""
     try:
@@ -91,6 +113,15 @@ with app.app_context():
         default_wallpaper = WallpaperSettings(background_image='')
         db.session.add(default_wallpaper)
         db.session.commit()
+
+    # Backfill: ensure items without images get the default image
+    try:
+        default_path = get_default_image_path()
+        # Update rows where image_url is NULL or empty
+        MenuItem.query.filter((MenuItem.image_url.is_(None)) | (MenuItem.image_url == '')).update({MenuItem.image_url: default_path})
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
 @app.route('/')
 def serve_index():
@@ -185,6 +216,8 @@ def create_item():
     image_path = None
     if 'image_url' in data and data['image_url']:
         image_path = save_image_to_file(data['image_url'])
+    if not image_path:
+        image_path = get_default_image_path()
     
     item = MenuItem(
         name=data['name'],
